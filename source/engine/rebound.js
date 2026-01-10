@@ -108,8 +108,10 @@ class Vector2
 
 class Transform
 {
-    constructor(localPosition=Vector2.zero, localRotation=0, localScale=Vector2.one)
+    constructor(gameObject, localPosition=Vector2.zero, localRotation=0, localScale=Vector2.one)
     {
+        this.gameObject = gameObject;
+
         this.localPosition = localPosition;
         this.localRotation = localRotation;
         this.localScale = localScale;
@@ -266,6 +268,7 @@ class Entity
         this.hasStarted = false;
 
         this._enabled = true;
+        this._parentEnabled = true;
     }
 
     OnEnable() {  }
@@ -293,6 +296,16 @@ class Entity
             this._enabled = _value;
         }
     }
+
+    get parentEnabled()
+    {
+        return this._parentEnabled;
+    }
+
+    set parentEnabled(_value)
+    {
+        this._parentEnabled = _value;
+    }
 }
 
 class Component extends Entity
@@ -306,7 +319,7 @@ class Component extends Entity
 
     Base_Start()
     {
-        if (this.enabled && this.gameObject.enabled && !this.hasStarted)
+        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled && !this.hasStarted)
         {
             this.Start();
 
@@ -316,7 +329,7 @@ class Component extends Entity
 
     Base_Update()
     {
-        if (this.enabled && this.gameObject.enabled)
+        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled)
         {
             this.Update();
         }
@@ -361,35 +374,59 @@ class SpriteRenderer extends Component
 
     Start()
     {
-        super.Start();
-
         this.Enqueue();
     }
 
     OnEnable()
     {
-        super.OnEnable();
-
         this.Enqueue();
     }
 
     OnDisable()
     {
-        super.OnDisable();
-
         this.Deque();
+    }
+}
+
+class TestComponent extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+    }
+
+    Start()
+    {
+        console.info("Test component started!");
+    }
+
+    Update()
+    {
+        console.info("Test component updated!");
+    }
+
+    OnEnable()
+    {
+        console.info("Test component enabled!");
+    }
+
+    OnDisable()
+    {
+        console.info("Test component disabled!");
     }
 }
 
 class GameObject extends Entity
 {
-    constructor(name="GameObject", parent=null)
+    constructor(scene, name="GameObject", parent=null)
     {
         super();
 
+        this.scene = scene;
+
         this.name = name;
         
-        this.transform = new Transform();
+        this.transform = new Transform(this);
         this.transform.parent = parent;
 
         this._components = [];
@@ -399,9 +436,9 @@ class GameObject extends Entity
     {
         const _comp = new _componentType(this, ...args);
 
-        _comp.Base_Start();
-
         this._components.push(_comp);
+
+        _comp.Base_Start();
     }
 
     RemoveComponent(_componentType)
@@ -421,7 +458,7 @@ class GameObject extends Entity
 
     Base_Update()
     {
-        if (this.enabled)
+        if (this.enabled && this.parentEnabled)
         {
             for (let i = 0; i < this._components.length; i++)
             {
@@ -437,30 +474,56 @@ class GameObject extends Entity
 
     set enabled(_value)
     {
-        if (this._enabled != _value)
+        if (this._enabled == _value) { return; }
+
+        this._enabled = _value;
+
+        this.Internal_TraverseAndSetEnableState();
+
+        for (let i = 0; i < this.componentCount; i++)
         {
-            if (_value)
-            {
-                this.OnEnable();
-
-                for (let i = 0; i < this._components.length; i++)
-                {
-                    this._components[i].OnEnable();
-                }
-            }
-
-            else
-            {
-                this.OnDisable();
-
-                for (let i = 0; i < this._components.length; i++)
-                {
-                    this._components[i].OnDisable();   
-                }
-            }
-
-            this._enabled = _value;
+            _value ? this._components[i].OnEnable() : this._components[i].OnDisable();
         }
+    }
+
+    get componentCount()
+    {
+        return this._components.length;
+    }
+
+    Internal_TraverseAndSetEnableState(_target=this.transform)
+    {
+        const _parentGO = _target.parent?.gameObject;
+
+        _target.gameObject.parentEnabled = _parentGO ? (_parentGO.enabled && _parentGO.parentEnabled) : true;
+
+        for (let i = 0; i < _target.childCount; i++)
+        {
+            this.Internal_TraverseAndSetEnableState(_target.GetChild(i));
+        }
+    }
+}
+
+class Scene
+{
+    constructor()
+    {
+        this.root = new GameObject("Scene Root");
+    }
+
+    Internal_TraverseAndUpdate(_target=this.root.transform)
+    {
+        if (!_target.gameObject.enabled || !_target.gameObject.parentEnabled)
+        {
+            return;
+        }
+
+        for (let i = 0; i < _target.childCount; i++)
+        {
+            this.Internal_TraverseAndUpdate(_target.GetChild(i));
+        }
+
+        _target.gameObject.Base_Update();
     }
 }
 
@@ -535,11 +598,56 @@ class Engine
         }
 
         window.onEachFrame = _frame;
+
+        this.s = new Scene();
+
+        const _go1 = new GameObject(this.s, "OBJ1", this.s.root.transform);
+        const _go2 = new GameObject(this.s, "OBJ2", _go1.transform);
+
+        this.missingTextureA = new Image();
+        this.missingTextureA.src = "source/engine/textures/missingTextureA.png";
+
+        _go1.AddComponent(SpriteRenderer, this.missingTextureA, 0);
+        _go1.transform.localScale = new Vector2(50, 50);
+
+        this.missingTextureB = new Image();
+        this.missingTextureB.src = "source/engine/textures/missingTextureB.png";
+
+        _go2.AddComponent(SpriteRenderer, this.missingTextureB, 1);
+        _go2.transform.localScale = new Vector2(0.5, 0.5);
     }
 
     Internal_Update()
     {
-        
+        this.s.root.transform.GetChild(0).localPosition.Add(Vector2.one);
+
+        this.s.Internal_TraverseAndUpdate();
+
+        this.Internal_Render();
+    }
+
+    Internal_Render()
+    {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+
+        for (let i = 0; i < this._renderQueue.length; i++)
+        {
+            const _renderer = this._renderQueue[i];
+
+            if (!_renderer.texture.complete) { continue; }
+
+            this.ctx.save();
+
+            this.ctx.translate(_renderer.gameObject.transform.position.x, this.height - _renderer.gameObject.transform.position.y);
+
+            this.ctx.rotate(-_renderer.gameObject.transform.rotation);
+
+            this.ctx.scale(_renderer.gameObject.transform.scale.x, _renderer.gameObject.transform.scale.y);
+
+            this.ctx.drawImage(_renderer.texture, -_renderer.texture.width / 2, -_renderer.texture.height / 2);
+
+            this.ctx.restore();
+        }
     }
 
     set width(_newWidth)
@@ -585,4 +693,4 @@ class Engine
     }
 }
 
-const _e = new Engine(1024, 1024);
+const _e = new Engine();
