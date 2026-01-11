@@ -388,31 +388,57 @@ class SpriteRenderer extends Component
     }
 }
 
-class TestComponent extends Component
+class MotionTester extends Component
 {
-    constructor(gameObject)
+    constructor(gameObject, targetPosition, detachOnArrival=false)
     {
         super(gameObject);
-    }
 
-    Start()
-    {
-        console.info("Test component started!");
+        this.targetPosition = targetPosition;
+        this.detachOnArrival = detachOnArrival;
+        this._arrivedOnce = false;
     }
 
     Update()
     {
-        console.info("Test component updated!");
-    }
+        if (this.gameObject.transform.position.x != this.targetPosition.x || this.gameObject.transform.position.y != this.targetPosition.y)
+        {
+            let _newPos = this.gameObject.transform.position;
 
-    OnEnable()
-    {
-        console.info("Test component enabled!");
-    }
+            if (this.gameObject.transform.position.x < this.targetPosition.x)
+            {
+                _newPos.x++;
+            }
 
-    OnDisable()
-    {
-        console.info("Test component disabled!");
+            else if (this.gameObject.transform.position.x > this.targetPosition.x)
+            {
+                _newPos.x--;
+            }
+
+            if (this.gameObject.transform.position.y < this.targetPosition.y)
+            {
+                _newPos.y++;
+            }
+
+            else if (this.gameObject.transform.position.y > this.targetPosition.y)
+            {
+                _newPos.y--;
+            }
+
+            this.gameObject.transform.position = _newPos;
+        }
+
+        else
+        {
+            if (this.detachOnArrival && !this._arrivedOnce)
+            {
+                this.gameObject.transform.GetChild(0).parent = this.gameObject.scene.root.transform;
+                
+                this.targetPosition.Add(this.targetPosition);
+            }
+
+            this._arrivedOnce = true;
+        }
     }
 }
 
@@ -427,7 +453,21 @@ class GameObject extends Entity
         this.name = name;
         
         this.transform = new Transform(this);
-        this.transform.parent = parent;
+        
+        if (parent == null && this.scene.root == undefined)
+        {
+            this.transform.parent = null;
+        }
+
+        else if (parent != null)
+        {
+            this.transform.parent = parent;
+        }
+
+        else
+        {
+            this.transform.parent = this.scene.root.transform;
+        }
 
         this._components = [];
     }
@@ -508,7 +548,7 @@ class Scene
 {
     constructor()
     {
-        this.root = new GameObject("Scene Root");
+        this.root = new GameObject(this, "Scene Root", null);
     }
 
     Internal_TraverseAndUpdate(_target=this.root.transform)
@@ -567,6 +607,7 @@ class Engine
 
         this._deltaTime = 0;
         this._renderQueue = [];
+        this._scenes = [];
 
         this.Internal_Start();
 
@@ -598,30 +639,14 @@ class Engine
         }
 
         window.onEachFrame = _frame;
-
-        this.s = new Scene();
-
-        const _go1 = new GameObject(this.s, "OBJ1", this.s.root.transform);
-        const _go2 = new GameObject(this.s, "OBJ2", _go1.transform);
-
-        this.missingTextureA = new Image();
-        this.missingTextureA.src = "source/engine/textures/missingTextureA.png";
-
-        _go1.AddComponent(SpriteRenderer, this.missingTextureA, 0);
-        _go1.transform.localScale = new Vector2(50, 50);
-
-        this.missingTextureB = new Image();
-        this.missingTextureB.src = "source/engine/textures/missingTextureB.png";
-
-        _go2.AddComponent(SpriteRenderer, this.missingTextureB, 1);
-        _go2.transform.localScale = new Vector2(0.5, 0.5);
     }
 
     Internal_Update()
     {
-        this.s.root.transform.GetChild(0).localPosition.Add(Vector2.one);
-
-        this.s.Internal_TraverseAndUpdate();
+        for (let i = 0; i < this._scenes.length; i++)
+        {
+            this._scenes[i].Internal_TraverseAndUpdate();
+        }
 
         this.Internal_Render();
     }
@@ -691,6 +716,43 @@ class Engine
             this._renderQueue.splice(_index, 1);
         }
     }
+
+    AddToScenes(_scene)
+    {
+        this._scenes.push(_scene);
+    }
+
+    RemoveFromScenes(_targetScene)
+    {
+        const _index = this._scenes.findIndex((_scene) => _scene === _targetScene)
+
+        if (_index != -1)
+        {
+            this._scenes.splice(_index, 1);
+        }
+    }
 }
 
 const _e = new Engine();
+
+const _s = new Scene();
+
+const _go1 = new GameObject(_s, "Test Renderer A");
+const _go2 = new GameObject(_s, "Test Renderer B", _go1.transform);
+
+const _texA = new Image();
+_texA.src = "source/engine/textures/missingTextureA.png";
+
+const _texB = new Image();
+_texB.src = "source/engine/textures/missingTextureB.png";
+
+_go1.AddComponent(SpriteRenderer, _texA);
+_go1.AddComponent(MotionTester, new Vector2(200, 200), true);
+
+_go1.transform.localScale = new Vector2(100, 100);
+
+_go2.AddComponent(SpriteRenderer, _texB);
+
+_go2.transform.localScale = new Vector2(0.5, 0.5);
+
+Engine.I.AddToScenes(_s);
