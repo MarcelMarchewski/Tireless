@@ -119,6 +119,8 @@ export class Transform
         this._parent = null;
 
         this._children = [];
+
+        this._initialising = true;
     }
 
     get parent()
@@ -144,9 +146,14 @@ export class Transform
             this._parent.Internal_AddChild(this);
         }
 
-        this.position = _worldPosition;
-        this.rotation = _worldRotation;
-        this.scale = _worldScale;
+        if (!this._initialising && this._parent != null)
+        {
+            this.position = Vector2.Divide(Vector2.Rotate(Vector2.Subtract(_worldPosition, this._parent.position), -this._parent.rotation), this._parent.scale);
+            this.rotation = _worldRotation - this._parent.rotation;
+            this.scale = Vector2.Divide(_worldScale, this._parent.scale);
+        }
+
+        this._initialising = false;
     }
 
     get position()
@@ -232,6 +239,19 @@ export class Transform
         else
         {
             this.localScale = _newScale;
+        }
+    }
+
+    get lossyScale()
+    {
+        if (this.parent != null)
+        {
+            return Vector2.Multiply(this.parent.lossyScale, this.localScale);
+        }
+
+        else
+        {
+            return this.localScale;
         }
     }
 
@@ -919,7 +939,7 @@ export class Scene
 
 export class Engine
 {
-    constructor(width=512, height=512, imageSmoothing=false, borderStyle="1px solid #000000")
+    constructor(width=512, height=512, scale=Vector2.one, imageSmoothing=false, borderStyle="1px solid #000000")
     {
         if (Engine.I)
         {
@@ -930,6 +950,8 @@ export class Engine
         {
             Engine.I = this;
         }
+
+        this.scale = scale;
 
         this.c = document.createElement("canvas");
 
@@ -1025,73 +1047,69 @@ export class Engine
 
                 this.ctx.translate(_renderer.gameObject.transform.position.x, this.height - _renderer.gameObject.transform.position.y);
 
-                this.ctx.scale(_renderer.gameObject.transform.scale.x, _renderer.gameObject.transform.scale.y);
-
                 this.ctx.rotate(-_renderer.gameObject.transform.rotation);
 
-                let _maxY = 0;
+                this.ctx.scale(_renderer.gameObject.transform.lossyScale.x, _renderer.gameObject.transform.lossyScale.y);
 
-                const _tileDimensions = new Vector2(_renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
+                let _row = 1;
+
+                let _currentRowCol = 0;
+                let _maxCol = 0;
 
                 for (let _data of _renderer.data)
                 {
                     const _current = _data.split("x");
 
-                    if (parseInt(_current[0]) == -1)
+                    const _command = parseInt(_current[0]);
+                    const _iterations = parseInt(_current[1]);
+
+                    if (_command == -1)
                     {
-                        _maxY += parseInt(_current[1]) * _tileDimensions.y;
+                        _row += _iterations;
+                        _maxCol = Math.max(_maxCol, _currentRowCol);
+                        _currentRowCol = 0;
+                    }
+
+                    else
+                    {
+                        _currentRowCol += _iterations;
                     }
                 }
 
-                let _drawPos = new Vector2(0, -_maxY / 2);
+                _maxCol = Math.max(_maxCol, _currentRowCol);
 
-                let _blankSpaces = 0;
-                let _rowTileCount = 0;
+                const _startPos = new Vector2(-(_maxCol * _renderer.sprite.sourceDimensions.x) / 2, -(_row * _renderer.sprite.sourceDimensions.y) / 2);
+                const _currentPos = Vector2.zero;
 
                 for (let _data of _renderer.data)
                 {
                     const _current = _data.split("x");
 
-                    const _tileIndex = parseInt(_current[0]);
-                    const _tileCount = parseInt(_current[1]);
+                    const _command = parseInt(_current[0]);
+                    const _iterations = parseInt(_current[1]);
 
-                    switch (_tileIndex)
+                    if (_command == -1)
                     {
-                        case (-1):
-                        {
-                            _drawPos.y += _tileCount * _tileDimensions.y;
-                            _drawPos.x = 0;
+                        _currentPos.y += _iterations;
+                        _currentPos.x = 0;
 
-                            _blankSpaces = 0;
+                        continue;
+                    }
 
-                            break;
-                        }
+                    if (_command == -2)
+                    {
+                        _currentPos.x += _iterations;
 
-                        case (-2):
-                        {
-                            _blankSpaces += _tileCount;
-                            _rowTileCount += _tileCount;
+                        continue;
+                    }
 
-                            break;
-                        }
+                    for (let i = 0; i < _iterations; i++)
+                    {
+                        const _drawPos = new Vector2(_startPos.x + _currentPos.x * _renderer.sprite.sourceDimensions.x, _startPos.y + _currentPos.y * _renderer.sprite.sourceDimensions.y);
 
-                        default:
-                        {
-                            _rowTileCount += _tileCount;
+                        this.ctx.drawImage(_renderer.sprite.texture, _renderer.tiles[_command].x, _renderer.tiles[_command].y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y, _drawPos.x, _drawPos.y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
 
-                            const _rowWidth = _rowTileCount * _tileDimensions.x;
-                            _drawPos.x = -_rowWidth / 2 + _blankSpaces * _tileDimensions.x;
-
-                            for (let i = 0; i < _tileCount; i++)
-                            {
-                                this.ctx.drawImage(_renderer.sprite.texture, _renderer.tiles[_tileIndex].x, _renderer.tiles[_tileIndex].y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y, _drawPos.x, _drawPos.y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
-
-                                _drawPos.x += _tileDimensions.x;
-                            }
-
-                            _blankSpaces = 0;
-                            _rowTileCount = 0;
-                        }
+                        _currentPos.x++;
                     }
                 }
 
@@ -1110,7 +1128,7 @@ export class Engine
 
                 this.ctx.rotate(-_renderer.gameObject.transform.rotation);
 
-                this.ctx.scale(_renderer.gameObject.transform.scale.x, _renderer.gameObject.transform.scale.y);
+                this.ctx.scale(_renderer.gameObject.transform.lossyScale.x, _renderer.gameObject.transform.lossyScale.y);
 
                 this.ctx.drawImage(_renderer.sprite.texture, _renderer.sprite.sourcePosition.x, _renderer.sprite.sourcePosition.y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y, -_renderer.sprite.sourceDimensions.x / 2, -_renderer.sprite.sourceDimensions.y / 2, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
 
@@ -1125,7 +1143,7 @@ export class Engine
 
                 this.ctx.rotate(-this._renderQueue[i].gameObject.transform.rotation);
 
-                this.ctx.scale(this._renderQueue[i].gameObject.transform.scale.x, this._renderQueue[i].gameObject.transform.scale.y);
+                this.ctx.scale(this._renderQueue[i].gameObject.transform.lossyScale.x, this._renderQueue[i].gameObject.transform.lossyScale.y);
 
                 this.ctx.font = this._renderQueue[i].font;
 
@@ -1138,7 +1156,7 @@ export class Engine
 
     set width(_newWidth)
     {
-        this.c.width = _newWidth;
+        this.c.width = _newWidth * this.scale.x;
     }
 
     get width()
@@ -1148,7 +1166,7 @@ export class Engine
 
     set height(_newHeight)
     {
-        this.c.height = _newHeight;
+        this.c.height = _newHeight * this.scale.y;
     }
 
     get height()

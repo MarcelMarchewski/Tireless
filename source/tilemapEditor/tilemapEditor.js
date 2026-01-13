@@ -218,11 +218,10 @@ class TilemapEditor extends Rebound.Scene
     {
         super();
 
+        this.root.transform.localPosition.Add(new Rebound.Vector2(256 * Rebound.Engine.I.scale.x / 2, 240 * Rebound.Engine.I.scale.y / 2));
         this.root.transform.localScale.Multiply(new Rebound.Vector2(5, 5));
 
         this.testObject = new Rebound.GameObject(this);
-
-        this.testObject.transform.localPosition = new Rebound.Vector2(128, 128);
 
         const _s = new Rebound.Sprite(Rebound.Engine.I.missingTilemap, undefined, undefined, new Rebound.Vector2(32, 16));
 
@@ -237,7 +236,7 @@ class TilemapEditor extends Rebound.Scene
     }
 }
 
-const _e = new Rebound.Engine(256 * 5, 240 * 5, true);
+const _e = new Rebound.Engine(256, 240, new Rebound.Vector2(5, 5));
 
 const _s = new TilemapEditor();
 
