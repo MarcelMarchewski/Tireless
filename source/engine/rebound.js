@@ -574,17 +574,63 @@ export class CursorBoxCollider extends Component
     OnCursorCollideEnd() {  }
 }
 
-export class SpriteRenderer extends Component
+export class Sprite
 {
-    constructor(gameObject, texture, layer=0, sourceDimensions=new Vector2(1, 1))
+    constructor(texture, layer=0, sourcePosition=null, sourceDimensions=null)
     {
-        super(gameObject);
-
         this.texture = texture;
+
         this.layer = layer;
 
-        this.sourcePosition = Vector2.zero;
+        this.sourcePosition = sourcePosition;
+        
         this.sourceDimensions = sourceDimensions;
+    }
+
+    get sourcePosition()
+    {
+        return this._sourcePosition;
+    }
+
+    set sourcePosition(_value)
+    {
+        if (_value != null)
+        {
+            this._sourcePosition = _value;
+        }
+
+        else
+        {
+            this._sourcePosition = Vector2.zero;
+        }
+    }
+
+    get sourceDimensions()
+    {
+        return this._sourceDimensions;
+    }
+
+    set sourceDimensions(_value)
+    {
+        if (_value != null)
+        {
+            this._sourceDimensions = _value;
+        }
+
+        else
+        {
+            this._sourceDimensions = new Vector2(this.texture.width, this.texture.height);
+        }
+    }
+}
+
+export class SpriteRenderer extends Component
+{
+    constructor(gameObject, sprite=null)
+    {
+        super(gameObject);
+        
+        this.sprite = sprite;
 
         this._queued = false;
     }
@@ -623,6 +669,24 @@ export class SpriteRenderer extends Component
     {
         this.Deque();
     }
+
+    get sprite()
+    {
+        return this._sprite;
+    }
+
+    set sprite(_value)
+    {
+        if (_value != null)
+        {
+            this._sprite = _value;
+        }
+
+        else
+        {
+            this._sprite = new Sprite(Engine.I.missingTexture);
+        }
+    }
 }
 
 export class Animator extends Component
@@ -641,7 +705,7 @@ export class Animator extends Component
         
         this.loop = true;
 
-        this.SetTexture(this.spriteRenderer.texture, this.frameCount);
+        this.SetTexture(this.spriteRenderer.sprite.texture, this.frameCount);
     }
 
     Update()
@@ -668,13 +732,13 @@ export class Animator extends Component
                 }
             }
 
-            this.spriteRenderer.sourcePosition = this._frames[this._currentFrame];
+            this.spriteRenderer.sprite.sourcePosition = this._frames[this._currentFrame];
         }
     }
 
     SetTexture(_texture, _frameCount=this.frameCount)
     {
-        this.spriteRenderer.texture = _texture;
+        this.spriteRenderer.sprite.texture = _texture;
         this.frameCount = _frameCount;
 
         this._frames = [];
@@ -686,29 +750,31 @@ export class Animator extends Component
         {
             this._frames.push(new Vector2(x, y));
 
-            if (x < this.spriteRenderer.texture.width - this.spriteRenderer.sourceDimensions.x)
+            if (x < this.spriteRenderer.sprite.texture.width - this.spriteRenderer.sprite.sourceDimensions.x)
             {
-                x += this.spriteRenderer.sourceDimensions.x + Engine.I.SPRITE_PADDING;
+                x += this.spriteRenderer.sprite.sourceDimensions.x + Engine.I.SPRITE_PADDING;
             }
 
             else
             {
                 x = 0;
 
-                y += this.spriteRenderer.sourceDimensions.y + Engine.I.SPRITE_PADDING;
+                y += this.spriteRenderer.sprite.sourceDimensions.y + Engine.I.SPRITE_PADDING;
             }
         }
     }
 }
 
-export class TilemapSequence
+export class TilemapRenderer extends SpriteRenderer
 {
-    constructor(dataPath="resources/tilemaps/engine/t_missingTilemap.json")
+    constructor(gameObject, sprite=null, dataPath=null)
     {
+        super(gameObject, sprite);
+
         this.dataPath = dataPath;
     }
 
-    get data()
+    GetData()
     {
         let _xmlHTTP = new XMLHttpRequest();;
 
@@ -720,18 +786,76 @@ export class TilemapSequence
             }
         }
 
-        _xmlHTTP.open("GET", this.dataPath, false);
+        _xmlHTTP.open("GET", this._dataPath, false);
         _xmlHTTP.send();
 
         return JSON.parse(_xmlHTTP.response);
     }
-}
 
-export class TilemapRenderer extends Component
-{
-    constructor(gameObject)
+    GenerateTiles()
     {
-        super(gameObject);
+        let _tmp = [];
+
+        this._col = Math.floor((this.sprite.texture.width + Engine.I.SPRITE_PADDING) / (this.sprite.sourceDimensions.x + Engine.I.SPRITE_PADDING));
+        this._row = Math.floor((this.sprite.texture.height + Engine.I.SPRITE_PADDING) / (this.sprite.sourceDimensions.y + Engine.I.SPRITE_PADDING));
+
+        for (let y = 0; y < this._row; y++)
+        {
+            const _yPos = y * (this.sprite.sourceDimensions.y + Engine.I.SPRITE_PADDING);
+
+            for (let x = 0; x < this._col; x++)
+            {
+                const _xPos = x * (this.sprite.sourceDimensions.x + Engine.I.SPRITE_PADDING);
+
+                _tmp.push(new Vector2(_xPos, _yPos));
+            }
+        }
+
+        return _tmp;
+    }
+
+    get data()
+    {
+        return this._data;
+    }
+
+    get tiles()
+    {
+        return this._tiles;
+    }
+
+    set dataPath(_value)
+    {
+        if (_value != null)
+        {
+            this._dataPath = _value;
+        }
+
+        else
+        {
+            this._dataPath = "source/engine/tilemaps/missingTilemap.json"
+        }
+
+        this._data = this.GetData();
+        this._tiles = this.GenerateTiles();
+    }
+    
+    get sprite()
+    {
+        return this._sprite;
+    }
+
+    set sprite(_value)
+    {
+        if (_value != null)
+        {
+            this._sprite = _value;
+        }
+
+        else
+        {
+            this._sprite = new Sprite(Engine.I.missingTilemap);
+        }
     }
 }
 
@@ -833,6 +957,12 @@ export class Engine
 
         this.SPRITE_PADDING = 1;
 
+        this.missingTexture = new Image();
+        this.missingTexture.src = "source/engine/textures/missingTextureA.png";
+
+        this.missingTilemap = new Image();
+        this.missingTilemap.src = "source/engine/textures/missingTilemap.png";
+
         this._deltaTime = 0;
         this._renderQueue = [];
         this._scenes = [];
@@ -885,11 +1015,94 @@ export class Engine
 
         for (let i = 0; i < this._renderQueue.length; i++)
         {
-            if (!(this._renderQueue[i] instanceof TextData))
+            if (this._renderQueue[i] instanceof TilemapRenderer)
             {
                 const _renderer = this._renderQueue[i];
 
-                if (!_renderer.texture.complete) { continue; }
+                if (!_renderer.sprite.texture.complete) { continue; }
+
+                this.ctx.save();
+
+                this.ctx.translate(_renderer.gameObject.transform.position.x, this.height - _renderer.gameObject.transform.position.y);
+
+                this.ctx.scale(_renderer.gameObject.transform.scale.x, _renderer.gameObject.transform.scale.y);
+
+                this.ctx.rotate(-_renderer.gameObject.transform.rotation);
+
+                let _maxY = 0;
+
+                const _tileDimensions = new Vector2(_renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
+
+                for (let _data of _renderer.data)
+                {
+                    const _current = _data.split("x");
+
+                    if (parseInt(_current[0]) == -1)
+                    {
+                        _maxY += parseInt(_current[1]) * _tileDimensions.y;
+                    }
+                }
+
+                let _drawPos = new Vector2(0, -_maxY / 2);
+
+                let _blankSpaces = 0;
+                let _rowTileCount = 0;
+
+                for (let _data of _renderer.data)
+                {
+                    const _current = _data.split("x");
+
+                    const _tileIndex = parseInt(_current[0]);
+                    const _tileCount = parseInt(_current[1]);
+
+                    switch (_tileIndex)
+                    {
+                        case (-1):
+                        {
+                            _drawPos.y += _tileCount * _tileDimensions.y;
+                            _drawPos.x = 0;
+
+                            _blankSpaces = 0;
+
+                            break;
+                        }
+
+                        case (-2):
+                        {
+                            _blankSpaces += _tileCount;
+                            _rowTileCount += _tileCount;
+
+                            break;
+                        }
+
+                        default:
+                        {
+                            _rowTileCount += _tileCount;
+
+                            const _rowWidth = _rowTileCount * _tileDimensions.x;
+                            _drawPos.x = -_rowWidth / 2 + _blankSpaces * _tileDimensions.x;
+
+                            for (let i = 0; i < _tileCount; i++)
+                            {
+                                this.ctx.drawImage(_renderer.sprite.texture, _renderer.tiles[_tileIndex].x, _renderer.tiles[_tileIndex].y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y, _drawPos.x, _drawPos.y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
+
+                                _drawPos.x += _tileDimensions.x;
+                            }
+
+                            _blankSpaces = 0;
+                            _rowTileCount = 0;
+                        }
+                    }
+                }
+
+                this.ctx.restore();
+            }
+
+            else if (this._renderQueue[i] instanceof SpriteRenderer)
+            {
+                const _renderer = this._renderQueue[i];
+
+                if (!_renderer.sprite.texture.complete) { continue; }
 
                 this.ctx.save();
 
@@ -899,7 +1112,7 @@ export class Engine
 
                 this.ctx.scale(_renderer.gameObject.transform.scale.x, _renderer.gameObject.transform.scale.y);
 
-                this.ctx.drawImage(_renderer.texture, _renderer.sourcePosition.x, _renderer.sourcePosition.y, _renderer.sourceDimensions.x, _renderer.sourceDimensions.y, -_renderer.sourceDimensions.x / 2, -_renderer.sourceDimensions.y / 2, _renderer.sourceDimensions.x, _renderer.sourceDimensions.y);
+                this.ctx.drawImage(_renderer.sprite.texture, _renderer.sprite.sourcePosition.x, _renderer.sprite.sourcePosition.y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y, -_renderer.sprite.sourceDimensions.x / 2, -_renderer.sprite.sourceDimensions.y / 2, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
 
                 this.ctx.restore();
             }

@@ -54,7 +54,7 @@ class TextBox extends InteractableBox
     { 
         if (this.renderer != null)
         {
-            this.renderer.texture = this.selectedTex;
+            this.renderer.sprite.texture = this.selectedTex;
         }
 
         this._selected = true;
@@ -131,7 +131,7 @@ class TextBox extends InteractableBox
 
         if (this.renderer != null)
         {
-            this.renderer.texture = this.standardTex;
+            this.renderer.sprite.texture = this.standardTex;
         }
 
         this._textData.Enqueue();
@@ -148,7 +148,7 @@ class TextBox extends InteractableBox
 
         if (this.renderer != null)
         {
-            this.renderer.texture = this.standardTex;
+            this.renderer.sprite.texture = this.standardTex;
         }
 
         this._textData.Enqueue();
@@ -160,7 +160,7 @@ class TextBox extends InteractableBox
 
         if (this.renderer != null)
         {
-            this.renderer.texture = this.standardTex;
+            this.renderer.sprite.texture = this.standardTex;
         }
 
         this._textData.Deque();
@@ -172,7 +172,7 @@ class TextBox extends InteractableBox
 
         if (this.renderer != null)
         {
-            this.renderer.texture = this.standardTex;
+            this.renderer.sprite.texture = this.standardTex;
         }
 
         this._textData.Deque();
@@ -184,7 +184,7 @@ class TextBox extends InteractableBox
 
         if (this.renderer != null)
         {
-            this.renderer.texture = this.hoverTex;
+            this.renderer.sprite.texture = this.hoverTex;
         }
 
         document.addEventListener("keydown", this.OnKeyDown);
@@ -195,9 +195,9 @@ class TextBox extends InteractableBox
     {
         super.OnCursorCollideEnd();
 
-        if (this.renderer != null)
+        if (this.renderer.sprite != null)
         {
-            this.renderer.texture = this.standardTex;
+            this.renderer.sprite.texture = this.standardTex;
         }
         
         document.removeEventListener("keydown", this.OnKeyDown);
@@ -218,37 +218,15 @@ class TilemapEditor extends Rebound.Scene
     {
         super();
 
-        this.resolutionContainer = new Rebound.GameObject(this, "ResolutionContainer");
+        this.root.transform.localScale.Multiply(new Rebound.Vector2(5, 5));
 
-        this.resolutionContainerRenderer = new Rebound.GameObject(this, "Renderer", this.resolutionContainer.transform);
+        this.testObject = new Rebound.GameObject(this);
 
-        this.resolutionContainerBox = new Rebound.GameObject(this, "Text Box", this.resolutionContainer.transform);
+        this.testObject.transform.localPosition = new Rebound.Vector2(128, 128);
 
-        this.testSprite = new Rebound.GameObject(this, "Test Sprite");
+        const _s = new Rebound.Sprite(Rebound.Engine.I.missingTilemap, undefined, undefined, new Rebound.Vector2(32, 16));
 
-        this.testSprite.transform.localPosition = new Rebound.Vector2(100, 100);
-        this.testSprite.transform.localScale = new Rebound.Vector2(5, 5);
-
-        this.testTexture = new Image();
-        this.testTexture.src = "source/tilemapEditor/textures/debug/t_missingTilemap.png";
-
-        const _testRend = this.testSprite.AddComponent(Rebound.SpriteRenderer, this.testTexture, 0, new Rebound.Vector2(32, 16));
-        this.testSprite.AddComponent(Rebound.Animator, _testRend, 5);
-
-        this.missingTex = new Image();
-        this.missingTex.src = "source/engine/textures/missingTextureA.png";
-
-        this.resolutionContainer.transform.localPosition = new Rebound.Vector2(50, 743);
-
-        this.resolutionContainerRenderer.transform.localScale.Multiply(new Rebound.Vector2(12.5, 6.25));
-        
-        const _rend = this.resolutionContainerRenderer.AddComponent(Rebound.SpriteRenderer, this.missingTex, 0, new Rebound.Vector2(8, 8));
-
-        this.OnEnterPressed = this.OnEnterPressed.bind(this);
-        this.resolutionTextBox = this.resolutionContainerBox.AddComponent(TextBox, 0, 50, 25, null, _rend, this.OnEnterPressed);
-
-        //this.tilemap = new Image();
-        //this.tilemap.src = "source/tilemapEditor/textures/palette/.png";
+        const _rend = this.testObject.AddComponent(Rebound.TilemapRenderer, _s);
     }
 
     OnEnterPressed()
@@ -259,7 +237,7 @@ class TilemapEditor extends Rebound.Scene
     }
 }
 
-const _e = new Rebound.Engine(512, 768);
+const _e = new Rebound.Engine(256 * 5, 240 * 5, true);
 
 const _s = new TilemapEditor();
 
