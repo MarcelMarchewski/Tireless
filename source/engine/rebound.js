@@ -1,7 +1,7 @@
 "use strict";
 
 // NOTE: WHEN RENDERING SUB Y AXIS FROM CANVAS HEIGHT FOR INTUITIVE Y AXIS
-class Vector2
+export class Vector2
 {
     constructor(x=0, y=0)
     {
@@ -106,7 +106,7 @@ class Vector2
     }
 }
 
-class Transform
+export class Transform
 {
     constructor(gameObject, localPosition=Vector2.zero, localRotation=0, localScale=Vector2.one)
     {
@@ -261,7 +261,7 @@ class Transform
     }
 }
 
-class Entity
+export class Entity
 {
     constructor()
     {
@@ -308,141 +308,7 @@ class Entity
     }
 }
 
-class Component extends Entity
-{
-    constructor(gameObject)
-    {
-        super();
-
-        this.gameObject = gameObject;
-    }
-
-    Base_Start()
-    {
-        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled && !this.hasStarted)
-        {
-            this.Start();
-
-            this.hasStarted = true;
-        }
-    }
-
-    Base_Update()
-    {
-        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled)
-        {
-            this.Update();
-        }
-    }
-
-    Start() {  }
-
-    Update() {  }
-}
-
-class SpriteRenderer extends Component
-{
-    constructor(gameObject, texture, layer=0)
-    {
-        super(gameObject);
-
-        this.texture = texture;
-        this.layer = layer;
-
-        this._queued = false;
-    }
-
-    Enqueue()
-    {
-        if (!this._queued)
-        {
-            Engine.I.AddToRenderQueue(this);
-
-            this._queued = true;
-        }
-    }
-
-    Deque()
-    {
-        if (this._queued)
-        {
-            Engine.I.RemoveFromRenderQueue(this);
-
-            this._queued = false;
-        }
-    }
-
-    Start()
-    {
-        this.Enqueue();
-    }
-
-    OnEnable()
-    {
-        this.Enqueue();
-    }
-
-    OnDisable()
-    {
-        this.Deque();
-    }
-}
-
-class MotionTester extends Component
-{
-    constructor(gameObject, targetPosition, detachOnArrival=false)
-    {
-        super(gameObject);
-
-        this.targetPosition = targetPosition;
-        this.detachOnArrival = detachOnArrival;
-        this._arrivedOnce = false;
-    }
-
-    Update()
-    {
-        if (this.gameObject.transform.position.x != this.targetPosition.x || this.gameObject.transform.position.y != this.targetPosition.y)
-        {
-            let _newPos = this.gameObject.transform.position;
-
-            if (this.gameObject.transform.position.x < this.targetPosition.x)
-            {
-                _newPos.x++;
-            }
-
-            else if (this.gameObject.transform.position.x > this.targetPosition.x)
-            {
-                _newPos.x--;
-            }
-
-            if (this.gameObject.transform.position.y < this.targetPosition.y)
-            {
-                _newPos.y++;
-            }
-
-            else if (this.gameObject.transform.position.y > this.targetPosition.y)
-            {
-                _newPos.y--;
-            }
-
-            this.gameObject.transform.position = _newPos;
-        }
-
-        else
-        {
-            if (this.detachOnArrival && !this._arrivedOnce)
-            {
-                this.gameObject.transform.GetChild(0).parent = this.gameObject.scene.root.transform;
-                
-                this.targetPosition.Add(this.targetPosition);
-            }
-
-            this._arrivedOnce = true;
-        }
-    }
-}
-
-class GameObject extends Entity
+export class GameObject extends Entity
 {
     constructor(scene, name="GameObject", parent=null)
     {
@@ -479,11 +345,19 @@ class GameObject extends Entity
         this._components.push(_comp);
 
         _comp.Base_Start();
+
+        return _comp;
     }
 
     RemoveComponent(_componentType)
     {
-        this._components.splice(this._components.findIndex((_comp) => _comp instanceof _componentType), 1);
+        const _compIndex = this._components.findIndex((_comp) => _comp instanceof _componentType);
+
+        const _comp = this._components[_compIndex];
+
+        this._components.splice(_compIndex, 1);
+
+        _comp.Base_OnRemove();
     }
 
     GetComponent(_componentType)
@@ -544,7 +418,359 @@ class GameObject extends Entity
     }
 }
 
-class Scene
+export class Component extends Entity
+{
+    constructor(gameObject)
+    {
+        super();
+
+        this.gameObject = gameObject;
+    }
+
+    Base_Start()
+    {
+        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled && !this.hasStarted)
+        {
+            this.Start();
+
+            this.hasStarted = true;
+        }
+    }
+
+    Base_Update()
+    {
+        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled)
+        {
+            this.Update();
+        }
+    }
+
+    Base_OnRemove()
+    {
+        this.OnRemove();
+    }
+
+    Start() {  }
+
+    Update() {  }
+
+    OnRemove() {  }
+}
+
+export class CursorTracker extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+
+        this._cursorPosition = Vector2.zero;
+
+        this.Internal_SetCursorPosition = this.Internal_SetCursorPosition.bind(this);
+    }
+
+    Internal_SetCursorPosition(_event)
+    {
+        this._cursorPosition = new Vector2(Math.round(_event.clientX - (window.innerWidth / 2 - Engine.I.width / 2)), Engine.I.height - Math.round(_event.clientY - (window.innerHeight / 2 - Engine.I.height / 2)));
+    }
+
+    Start()
+    {
+        Engine.I.c.addEventListener('mousemove', this.Internal_SetCursorPosition);
+    }
+
+    OnEnable()
+    {
+        Engine.I.c.addEventListener('mousemove', this.Internal_SetCursorPosition);
+    }
+
+    OnDisable()
+    {
+        Engine.I.c.removeEventListener('mousemove', this.Internal_SetCursorPosition);
+    }
+
+    OnRemove()
+    {
+        Engine.I.c.removeEventListener('mousemove', this.Internal_SetCursorPosition);
+    }
+
+    get cursorPosition()
+    {
+        return this._cursorPosition;
+    }
+}
+
+export class CursorBoxCollider extends Component
+{
+    constructor(gameObject, width=128, height=128, tracker=null)
+    {
+        super(gameObject);
+
+        this.width = width;
+        this.height = height;
+
+        if (tracker == null)
+        {
+            this._tracker = gameObject.AddComponent(CursorTracker);
+        }
+
+        else
+        {
+            this._tracker = tracker;
+        }
+
+        this._isColliding = false;
+    }
+
+    Base_OnCursorCollideStart()
+    {
+        this.OnCursorCollideStart();
+    }
+
+    Base_OnCursorCollideUpdate()
+    {
+        this.OnCursorCollideUpdate();
+    }
+
+    Base_OnCursorCollideEnd()
+    {
+        this.OnCursorCollideEnd();
+    }
+
+    Update()
+    {
+        const _cursorPos = this._tracker.cursorPosition;
+
+        if (_cursorPos.x >= this.gameObject.transform.position.x - this.width * this.gameObject.transform.scale.x 
+        && _cursorPos.x <= this.gameObject.transform.position.x + this.width * this.gameObject.transform.scale.x
+        && _cursorPos.y >= this.gameObject.transform.position.y - this.height * this.gameObject.transform.scale.y
+        && _cursorPos.y <= this.gameObject.transform.position.y + this.height * this.gameObject.transform.scale.y
+        )
+        {
+            if (this._isColliding)
+            {
+                this.Base_OnCursorCollideUpdate();
+            }
+
+            else
+            {
+                this._isColliding = true;
+
+                this.Base_OnCursorCollideStart();
+            }
+        }
+
+        else if (this._isColliding)
+        {
+            this._isColliding = false;
+
+            this.Base_OnCursorCollideEnd();
+        }
+    }
+
+    OnCursorCollideStart() {  }
+
+    OnCursorCollideUpdate() {  }
+
+    OnCursorCollideEnd() {  }
+}
+
+export class SpriteRenderer extends Component
+{
+    constructor(gameObject, texture, layer=0, sourceDimensions=new Vector2(1, 1))
+    {
+        super(gameObject);
+
+        this.texture = texture;
+        this.layer = layer;
+
+        this.sourcePosition = Vector2.zero;
+        this.sourceDimensions = sourceDimensions;
+
+        this._queued = false;
+    }
+
+    Enqueue()
+    {
+        if (!this._queued)
+        {
+            Engine.I.AddToRenderQueue(this);
+
+            this._queued = true;
+        }
+    }
+
+    Deque()
+    {
+        if (this._queued)
+        {
+            Engine.I.RemoveFromRenderQueue(this);
+
+            this._queued = false;
+        }
+    }
+
+    Start()
+    {
+        this.Enqueue();
+    }
+
+    OnEnable()
+    {
+        this.Enqueue();
+    }
+
+    OnDisable()
+    {
+        this.Deque();
+    }
+}
+
+export class Animator extends Component
+{
+    constructor(gameObject, spriteRenderer, frameCount, frameDuration=0.1)
+    {
+        super(gameObject);
+
+        this.spriteRenderer = spriteRenderer;
+
+        this.frameCount = frameCount;
+        this.frameDuration = frameDuration;
+
+        this._currentFrame = 0;
+        this._timer = 0;
+        
+        this.loop = true;
+
+        this.SetTexture(this.spriteRenderer.texture, this.frameCount);
+    }
+
+    Update()
+    {
+        if (this._frames.length == 0) { return; }
+
+        this._timer += Engine.I.deltaTime;
+
+        while (this._timer >= this.frameDuration)
+        {
+            this._timer -= this.frameDuration;
+            this._currentFrame++;
+
+            if (this._currentFrame >= this._frames.length)
+            {
+                if (this.loop)
+                {
+                    this._currentFrame = 0;
+                }
+
+                else
+                {
+                    this._currentFrame = this._frames.length - 1;
+                }
+            }
+
+            this.spriteRenderer.sourcePosition = this._frames[this._currentFrame];
+        }
+    }
+
+    SetTexture(_texture, _frameCount=this.frameCount)
+    {
+        this.spriteRenderer.texture = _texture;
+        this.frameCount = _frameCount;
+
+        this._frames = [];
+
+        let x = 0;
+        let y = 0;
+
+        for (let i = 0; i < this.frameCount; i++)
+        {
+            this._frames.push(new Vector2(x, y));
+
+            if (x < this.spriteRenderer.texture.width - this.spriteRenderer.sourceDimensions.x)
+            {
+                x += this.spriteRenderer.sourceDimensions.x + Engine.I.SPRITE_PADDING;
+            }
+
+            else
+            {
+                x = 0;
+
+                y += this.spriteRenderer.sourceDimensions.y + Engine.I.SPRITE_PADDING;
+            }
+        }
+    }
+}
+
+export class TilemapSequence
+{
+    constructor(dataPath="resources/tilemaps/engine/t_missingTilemap.json")
+    {
+        this.dataPath = dataPath;
+    }
+
+    get data()
+    {
+        let _xmlHTTP = new XMLHttpRequest();;
+
+        _xmlHTTP.onreadystatechange = function()
+        {   
+            if (_xmlHTTP.readyState == 4 && _xmlHTTP.status == 200)
+            {
+                return JSON.parse(_xmlHTTP.responseText);
+            }
+        }
+
+        _xmlHTTP.open("GET", this.dataPath, false);
+        _xmlHTTP.send();
+
+        return JSON.parse(_xmlHTTP.response);
+    }
+}
+
+export class TilemapRenderer extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+    }
+}
+
+export class TextData
+{
+    constructor(gameObject, text="Text here...", font="12px serif", layer=0)
+    {
+        this.gameObject = gameObject;
+
+        this.text = text;
+        this.font = font;
+
+        this.layer = layer;
+
+        this._queued = false;
+    }
+
+    Enqueue()
+    {
+        if (!this._queued)
+        {
+            Engine.I.AddToRenderQueue(this);
+
+            this._queued = true;
+        }
+    }
+
+    Deque()
+    {
+        if (this._queued)
+        {
+            Engine.I.RemoveFromRenderQueue(this);
+
+            this._queued = false;
+        }
+    }
+}
+
+export class Scene
 {
     constructor()
     {
@@ -567,7 +793,7 @@ class Scene
     }
 }
 
-class Engine
+export class Engine
 {
     constructor(width=512, height=512, imageSmoothing=false, borderStyle="1px solid #000000")
     {
@@ -604,6 +830,8 @@ class Engine
         this.ctx = this.c.getContext("2d");
 
         this.ctx.imageSmoothingEnabled = imageSmoothing;
+
+        this.SPRITE_PADDING = 1;
 
         this._deltaTime = 0;
         this._renderQueue = [];
@@ -657,21 +885,41 @@ class Engine
 
         for (let i = 0; i < this._renderQueue.length; i++)
         {
-            const _renderer = this._renderQueue[i];
+            if (!(this._renderQueue[i] instanceof TextData))
+            {
+                const _renderer = this._renderQueue[i];
 
-            if (!_renderer.texture.complete) { continue; }
+                if (!_renderer.texture.complete) { continue; }
 
-            this.ctx.save();
+                this.ctx.save();
 
-            this.ctx.translate(_renderer.gameObject.transform.position.x, this.height - _renderer.gameObject.transform.position.y);
+                this.ctx.translate(_renderer.gameObject.transform.position.x, this.height - _renderer.gameObject.transform.position.y);
 
-            this.ctx.rotate(-_renderer.gameObject.transform.rotation);
+                this.ctx.rotate(-_renderer.gameObject.transform.rotation);
 
-            this.ctx.scale(_renderer.gameObject.transform.scale.x, _renderer.gameObject.transform.scale.y);
+                this.ctx.scale(_renderer.gameObject.transform.scale.x, _renderer.gameObject.transform.scale.y);
 
-            this.ctx.drawImage(_renderer.texture, -_renderer.texture.width / 2, -_renderer.texture.height / 2);
+                this.ctx.drawImage(_renderer.texture, _renderer.sourcePosition.x, _renderer.sourcePosition.y, _renderer.sourceDimensions.x, _renderer.sourceDimensions.y, -_renderer.sourceDimensions.x / 2, -_renderer.sourceDimensions.y / 2, _renderer.sourceDimensions.x, _renderer.sourceDimensions.y);
 
-            this.ctx.restore();
+                this.ctx.restore();
+            }
+
+            else
+            {
+                this.ctx.save();
+
+                this.ctx.translate(this._renderQueue[i].gameObject.transform.position.x, this.height - this._renderQueue[i].gameObject.transform.position.y);
+
+                this.ctx.rotate(-this._renderQueue[i].gameObject.transform.rotation);
+
+                this.ctx.scale(this._renderQueue[i].gameObject.transform.scale.x, this._renderQueue[i].gameObject.transform.scale.y);
+
+                this.ctx.font = this._renderQueue[i].font;
+
+                this.ctx.fillText(this._renderQueue[i].text, 0, 0);
+
+                this.ctx.restore();
+            }
         }
     }
 
@@ -732,27 +980,3 @@ class Engine
         }
     }
 }
-
-const _e = new Engine();
-
-const _s = new Scene();
-
-const _go1 = new GameObject(_s, "Test Renderer A");
-const _go2 = new GameObject(_s, "Test Renderer B", _go1.transform);
-
-const _texA = new Image();
-_texA.src = "source/engine/textures/missingTextureA.png";
-
-const _texB = new Image();
-_texB.src = "source/engine/textures/missingTextureB.png";
-
-_go1.AddComponent(SpriteRenderer, _texA);
-_go1.AddComponent(MotionTester, new Vector2(200, 200), true);
-
-_go1.transform.localScale = new Vector2(100, 100);
-
-_go2.AddComponent(SpriteRenderer, _texB);
-
-_go2.transform.localScale = new Vector2(0.5, 0.5);
-
-Engine.I.AddToScenes(_s);
