@@ -539,22 +539,14 @@ export class CursorManager extends Component
 
 export class CursorBoxCollider extends Component
 {
-    constructor(gameObject, width=128, height=128, tracker=null)
+    constructor(gameObject, width=128, height=128)
     {
         super(gameObject);
 
         this.width = width;
         this.height = height;
 
-        if (tracker == null)
-        {
-            this._tracker = gameObject.AddComponent(CursorTracker);
-        }
-
-        else
-        {
-            this._tracker = tracker;
-        }
+        this._cursorManager = this.gameObject.scene.cursorManager;
 
         this._isColliding = false;
     }
@@ -576,7 +568,7 @@ export class CursorBoxCollider extends Component
 
     Update()
     {
-        const _cursorPos = this._tracker.cursorPosition;
+        const _cursorPos = this._cursorManager.cursorPosition;
 
         // possibly refactor to use scale only
         if (_cursorPos.x >= this.gameObject.transform.position.x - this.width * this.gameObject.transform.scale.x 
@@ -771,7 +763,7 @@ export class AudioPlayer extends Component
 
 export class Animator extends Component
 {
-    constructor(gameObject, spriteRenderer, frameCount, frameDuration=0.1)
+    constructor(gameObject, spriteRenderer, frameCount, frameDuration=0.1, loop=true, autoplay=true)
     {
         super(gameObject);
 
@@ -782,38 +774,101 @@ export class Animator extends Component
 
         this._currentFrame = 0;
         this._timer = 0;
+        this._playing = false;
         
-        this.loop = true;
+        this.loop = loop;
+        this.autoplay = autoplay;
 
         this.SetTexture(this.spriteRenderer.sprite.texture, this.frameCount);
     }
 
+    Start() 
+    {
+        if (this.autoplay)
+        {
+            this.Play();
+        }
+    }
+
     Update()
     {
-        if (this._frames.length == 0) { return; }
+        if (this._frames.length == 0 || !this._playing) { return; }
 
         this._timer += Engine.I.deltaTime;
 
         while (this._timer >= this.frameDuration)
         {
             this._timer -= this.frameDuration;
-            this._currentFrame++;
+            
+            this.NextFrame();
+        }
+    }
 
-            if (this._currentFrame >= this._frames.length)
+    Play()
+    {
+        this._timer = 0;
+        
+        this._playing = true;
+    }
+
+    Pause()
+    {
+        this._timer = 0;
+
+        this._playing = false;
+    }
+
+    Stop()
+    {
+        this._timer = 0;
+        this._currentFrame = 0;
+
+        this._playing = false;
+
+        this.Internal_RunFrame();
+    }
+
+    Internal_RunFrameWithLoopCheck()
+    {
+        if (this._frames.length == 0) { return; }
+
+        if (this._currentFrame >= this._frames.length)
+        {
+            if (this.loop)
             {
-                if (this.loop)
-                {
-                    this._currentFrame = 0;
-                }
-
-                else
-                {
-                    this._currentFrame = this._frames.length - 1;
-                }
+                this._currentFrame = 0;
             }
 
-            this.spriteRenderer.sprite.sourcePosition = this._frames[this._currentFrame];
+            else
+            {
+                this._currentFrame = this._frames.length - 1;
+
+                this.Pause();
+            }
         }
+
+        this.spriteRenderer.sprite.sourcePosition = this._frames[this._currentFrame];
+    }
+
+    Internal_RunFrame()
+    {
+        if (this._frames.length == 0) { return; }
+
+        this.spriteRenderer.sprite.sourcePosition = this._frames[this._currentFrame];
+    }
+
+    NextFrame()
+    {
+        this._currentFrame++;
+
+        this.Internal_RunFrameWithLoopCheck();
+    }
+
+    JumpToFrame(_frame)
+    {
+        this._currentFrame = _frame;
+
+        this.Internal_RunFrameWithLoopCheck();
     }
 
     SetTexture(_texture, _frameCount=this.frameCount)
@@ -856,7 +911,7 @@ export class TilemapRenderer extends SpriteRenderer
 
     GetData()
     {
-        let _xmlHTTP = new XMLHttpRequest();;
+        let _xmlHTTP = new XMLHttpRequest();
 
         _xmlHTTP.onreadystatechange = function()
         {   
