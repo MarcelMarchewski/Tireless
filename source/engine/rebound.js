@@ -285,8 +285,6 @@ export class Entity
 {
     constructor()
     {
-        this.hasStarted = false;
-
         this._enabled = true;
         this._parentEnabled = true;
     }
@@ -373,11 +371,29 @@ export class GameObject extends Entity
     {
         const _compIndex = this._components.findIndex((_comp) => _comp instanceof _componentType);
 
+        if (_compIndex == -1) { return; }
+
         const _comp = this._components[_compIndex];
 
         this._components.splice(_compIndex, 1);
 
         _comp.Base_OnRemove();
+    }
+
+    RemoveComponents(_componentType)
+    {
+        const _comps = this.GetComponents(_componentType);
+
+        for (let i = 0; i < _comps.length; i++)
+        {
+            const _index = this._components.indexOf(_comps[i]);
+
+            if (_index != -1)
+            {
+                this._components.splice(_index, 1);
+                _comps[i].Base_OnRemove();
+            }
+        }
     }
 
     GetComponent(_componentType)
@@ -445,15 +461,17 @@ export class Component extends Entity
         super();
 
         this.gameObject = gameObject;
+
+        this._hasStarted = false;
     }
 
     Base_Start()
     {
-        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled && !this.hasStarted)
+        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled && !this._hasStarted)
         {
             this.Start();
 
-            this.hasStarted = true;
+            this._hasStarted = true;
         }
     }
 
@@ -477,7 +495,7 @@ export class Component extends Entity
     OnRemove() {  }
 }
 
-export class CursorTracker extends Component
+export class CursorManager extends Component
 {
     constructor(gameObject)
     {
@@ -560,6 +578,7 @@ export class CursorBoxCollider extends Component
     {
         const _cursorPos = this._tracker.cursorPosition;
 
+        // possibly refactor to use scale only
         if (_cursorPos.x >= this.gameObject.transform.position.x - this.width * this.gameObject.transform.scale.x 
         && _cursorPos.x <= this.gameObject.transform.position.x + this.width * this.gameObject.transform.scale.x
         && _cursorPos.y >= this.gameObject.transform.position.y - this.height * this.gameObject.transform.scale.y
@@ -706,6 +725,47 @@ export class SpriteRenderer extends Component
         {
             this._sprite = new Sprite(Engine.I.missingTexture);
         }
+    }
+}
+
+export class AudioPlayer extends Component
+{
+    constructor(gameObject, file, doAutoCatchup=false)
+    {
+        super(gameObject);
+
+        this._audio = new Audio(file);
+
+        this._doAutoCatchup = doAutoCatchup;
+    }
+
+    get audio()
+    {
+        return this._audio;
+    }
+
+    Play()
+    {
+        if (this._audio.readyState != 4)
+        {
+            this._audio.autoplay = this._doAutoCatchup;
+
+            return;
+        }
+
+        this._audio.autoplay = false;
+        this._audio.play();
+    }
+
+    Pause()
+    {
+        this._audio.pause();
+    }
+
+    Stop()
+    {
+        this.Pause();
+        this._audio.currentTime = 0;
     }
 }
 
@@ -914,18 +974,146 @@ export class TextData
     }
 }
 
+export class KeyboardInputManager extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+
+        this.OnKeyDown = this.OnKeyDown.bind(this);
+        this.OnKeyUp = this.OnKeyUp.bind(this);
+
+        this._kdListeners = [];
+        this._kuListeners = [];
+
+        this._bound = false;
+    }
+
+    Start()
+    {
+        if (!this._bound)
+        {
+            document.addEventListener("keydown", this.OnKeyDown);
+            document.addEventListener("keyup", this.OnKeyUp);
+
+            this._bound = true;
+        }
+    }
+
+    OnEnable()
+    {
+        if (!this._bound)
+        {
+            document.addEventListener("keydown", this.OnKeyDown);
+            document.addEventListener("keyup", this.OnKeyUp);
+
+            this._bound = true;
+        }
+    }
+
+    OnDisable()
+    {
+        if (this._bound)
+        {
+            document.removeEventListener("keydown", this.OnKeyDown);
+            document.removeEventListener("keyup", this.OnKeyUp);
+
+            this._bound = false;
+        }
+    }
+
+    OnRemove()
+    {
+        if (this._bound)
+        {
+            document.removeEventListener("keydown", this.OnKeyDown);
+            document.removeEventListener("keyup", this.OnKeyUp);
+
+            this._bound = false;
+        }
+    }
+
+    OnKeyDown(_event)
+    {
+        for (let i = 0; i < this._kdListeners.length; i++)
+        {
+            this._kdListeners[i](_event);
+        }
+    }
+
+    OnKeyUp(_event)
+    {
+        for (let i = 0; i < this._kuListeners.length; i++)
+        {
+            this._kuListeners[i](_event);
+        }
+    }
+
+    AddKeyDownListener(_listener)
+    {
+        this._kdListeners.push(_listener);
+    }
+
+    RemoveKeyDownListener(_listener)
+    {
+        const _kdListenerIndex = this._kdListeners.findIndex((_listener) => _listener instanceof _componentType);
+
+        if (_kdListenerIndex == -1) { return; }
+
+        this._kdListeners.splice(_kdListenerIndex, 1);
+    }
+
+    AddKeyUpListener(_listener)
+    {
+        this._kuListeners.push(_listener);
+    }
+
+    RemoveKeyUpListener(_listener)
+    {
+        const _kuListenerIndex = this._kuListeners.findIndex((_listener) => _listener instanceof _componentType);
+
+        if (_kuListenerIndex == -1) { return; }
+
+        this._kuListeners.splice(_kuListenerIndex, 1);
+    }
+}
+
 export class Scene
 {
     constructor()
     {
         this.root = new GameObject(this, "Scene Root", null);
+
+        this._initialised = false;
     }
+
+    Base_Start()
+    {
+        this.cursorManager = this.root.AddComponent(CursorManager);
+        this.keyboardInputManager = this.root.AddComponent(KeyboardInputManager);
+
+        this.Start();
+    }
+
+    Base_Update() { this.Update(); }
 
     Internal_TraverseAndUpdate(_target=this.root.transform)
     {
         if (!_target.gameObject.enabled || !_target.gameObject.parentEnabled)
         {
             return;
+        }
+
+        if (_target == this.root.transform)
+        {
+            if (!this._initialised)
+            {
+                this.Base_Start();
+
+                this._initialised = true;
+            }
+
+            this.Base_Update();
         }
 
         for (let i = 0; i < _target.childCount; i++)
@@ -935,6 +1123,10 @@ export class Scene
 
         _target.gameObject.Base_Update();
     }
+
+    Start() {  }
+
+    Update() {  }
 }
 
 export class Engine
@@ -1033,7 +1225,11 @@ export class Engine
 
     Internal_Render()
     {
-        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        this.ctx.clearRect(0, 0, this.c.width, this.c.height);
+
+        this.ctx.scale(this.scale.x, this.scale.y);
 
         for (let i = 0; i < this._renderQueue.length; i++)
         {
@@ -1156,22 +1352,24 @@ export class Engine
 
     set width(_newWidth)
     {
+        this._width = _newWidth;
         this.c.width = _newWidth * this.scale.x;
     }
 
     get width()
     {
-        return this.c.width;
+        return this._width;
     }
 
     set height(_newHeight)
     {
+        this._height = _newHeight;
         this.c.height = _newHeight * this.scale.y;
     }
 
     get height()
     {
-        return this.c.height;
+        return this._height;
     }
 
     get deltaTime()
@@ -1183,7 +1381,7 @@ export class Engine
     {
         this._renderQueue.push(_renderer);
 
-        this._renderQueue.sort((_a, _b) => { return _a.layer - _b.layer });
+        this._renderQueue.sort((_a, _b) => { return _a.sprite.layer - _b.sprite.layer });
     }
 
     RemoveFromRenderQueue(_targetRenderer)
