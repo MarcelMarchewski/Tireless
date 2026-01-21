@@ -5,6 +5,12 @@ class MainMenu extends Rebound.Scene
     constructor()
     {
         super();
+
+        this.OnGamepadButtonDown = this.OnGamepadButtonDown.bind(this);
+        this.OnGamepadButtonUp = this.OnGamepadButtonUp.bind(this);
+
+        this.OnGamepadLeftStick = this.OnGamepadLeftStick.bind(this);
+        this.OnGamepadRightStick = this.OnGamepadRightStick.bind(this);
     }
 
     Start()
@@ -26,6 +32,32 @@ class MainMenu extends Rebound.Scene
         _texB.src = "source/tireless/resources/textures/MainMenu/tirelessTitleBackground.png";
 
         _background.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(_texB, 0));
+
+        this.inputManager.AddGamepadButtonDownListener(this.OnGamepadButtonDown);
+        this.inputManager.AddGamepadButtonUpListener(this.OnGamepadButtonUp);
+
+        this.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
+        this.inputManager.AddGamepadRightStickListener(this.OnGamepadRightStick);
+    }
+
+    OnGamepadButtonDown(_button, _name)
+    {
+        
+    }
+
+    OnGamepadButtonUp(_button, _name)
+    {
+        
+    }
+
+    OnGamepadLeftStick(_valueX, _valueY)
+    {
+        
+    }
+
+    OnGamepadRightStick(_valueX, _valueY)
+    {
+        
     }
 }
 

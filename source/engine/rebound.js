@@ -1029,7 +1029,7 @@ export class TextData
     }
 }
 
-export class KeyboardInputManager extends Component
+export class InputManager extends Component
 {
     constructor(gameObject)
     {
@@ -1038,10 +1038,26 @@ export class KeyboardInputManager extends Component
         this.OnKeyDown = this.OnKeyDown.bind(this);
         this.OnKeyUp = this.OnKeyUp.bind(this);
 
+        this.OnGamepadConnected = this.OnGamepadConnected.bind(this);
+        this.OnGamepadDisconnected = this.OnGamepadDisconnected.bind(this);
+
+        this.STICK_THRESHOLD = 0.05;
+
         this._kdListeners = [];
         this._kuListeners = [];
 
         this._bound = false;
+
+        this._currentGamepadIndex = null;
+
+        this._lastGamepadInputs = [];
+        this._lastGamepadAxisValues = [];
+
+        this._gpbdListeners = [];
+        this._gpbuListeners = [];
+
+        this._gplsListeners = [];
+        this._gprsListeners = [];
     }
 
     Start()
@@ -1051,7 +1067,64 @@ export class KeyboardInputManager extends Component
             document.addEventListener("keydown", this.OnKeyDown);
             document.addEventListener("keyup", this.OnKeyUp);
 
+            window.addEventListener("gamepadconnected", this.OnGamepadConnected);
+            window.addEventListener("gamepaddisconnected", this.OnGamepadDisconnected);
+
             this._bound = true;
+        }
+    }
+
+    Update()
+    {
+        if (this._currentGamepadIndex == null) { return; }
+        
+        const _gamepad = navigator.getGamepads()[this._currentGamepadIndex];
+
+        if (_gamepad == null) { return; }
+
+        for (let i = 0; i < _gamepad.buttons.length; i++)
+        {
+            const _currentState = _gamepad.buttons[i].pressed;
+            const _lastState = this._lastGamepadInputs[i] || false;
+
+            const _name = Engine.I.STANDARD_CONTROLLER_BUTTONS[i] || "Unknown Button " + i;
+
+            if (_currentState && !_lastState)
+            {
+                this.OnGamepadButtonDown(_gamepad.buttons[i], _name);
+            }
+
+            else if (!_currentState && _lastState)
+            {
+                this.OnGamepadButtonUp(_gamepad.buttons[i], _name);
+            }
+
+            this._lastGamepadInputs[i] = _currentState;
+        }
+
+        for (let i = 0; i < _gamepad.axes.length; i += 2)
+        {
+            const _currentValueX = _gamepad.axes[i];
+            const _currentValueY = _gamepad.axes[i + 1];
+
+            const _lastValueX = this._lastGamepadAxisValues[i] || 0;
+            const _lastValueY = this._lastGamepadAxisValues[i + 1] || 0;
+
+            if (Math.abs(_currentValueX - _lastValueX) > this.STICK_THRESHOLD || Math.abs(_currentValueY - _lastValueY) > this.STICK_THRESHOLD)
+            {
+                if (i == 0)
+                {
+                    this.OnGamepadLeftStick(_currentValueX, _currentValueY);
+                }
+
+                else
+                {
+                    this.OnGamepadRightStick(_currentValueX, _currentValueY);
+                }
+            }
+
+            this._lastGamepadAxisValues[i] = _currentValueX;
+            this._lastGamepadAxisValues[i + 1] = _currentValueY;
         }
     }
 
@@ -1061,6 +1134,9 @@ export class KeyboardInputManager extends Component
         {
             document.addEventListener("keydown", this.OnKeyDown);
             document.addEventListener("keyup", this.OnKeyUp);
+
+            window.addEventListener("gamepadconnected", this.OnGamepadConnected);
+            window.addEventListener("gamepaddisconnected", this.OnGamepadDisconnected);
 
             this._bound = true;
         }
@@ -1073,6 +1149,9 @@ export class KeyboardInputManager extends Component
             document.removeEventListener("keydown", this.OnKeyDown);
             document.removeEventListener("keyup", this.OnKeyUp);
 
+            window.removeEventListener("gamepadconnected", this.OnGamepadConnected);
+            window.removeEventListener("gamepaddisconnected", this.OnGamepadDisconnected);
+
             this._bound = false;
         }
     }
@@ -1083,6 +1162,9 @@ export class KeyboardInputManager extends Component
         {
             document.removeEventListener("keydown", this.OnKeyDown);
             document.removeEventListener("keyup", this.OnKeyUp);
+
+            window.removeEventListener("gamepadconnected", this.OnGamepadConnected);
+            window.removeEventListener("gamepaddisconnected", this.OnGamepadDisconnected);
 
             this._bound = false;
         }
@@ -1104,6 +1186,52 @@ export class KeyboardInputManager extends Component
         }
     }
 
+    OnGamepadButtonDown(_button, _name)
+    {
+        for (let i = 0; i < this._gpbdListeners.length; i++)
+        {
+            this._gpbdListeners[i](_button, _name);
+        }
+    }
+
+    OnGamepadButtonUp(_button, _name)
+    {
+        for (let i = 0; i < this._gpbuListeners.length; i++)
+        {
+            this._gpbuListeners[i](_button, _name);
+        }
+    }
+
+    OnGamepadLeftStick(_valueX, _valueY)
+    {
+        for (let i = 0; i < this._gplsListeners.length; i++)
+        {
+            this._gplsListeners[i](_valueX, _valueY);
+        }
+    }
+
+    OnGamepadRightStick(_valueX, _valueY)
+    {
+        for (let i = 0; i < this._gprsListeners.length; i++)
+        {
+            this._gprsListeners[i](_valueX, _valueY);
+        }
+    }
+
+    OnGamepadConnected(_event)
+    {
+        if (this._currentGamepadIndex != null) { return; }
+
+        this._currentGamepadIndex = _event.gamepad.index;
+    }
+
+    OnGamepadDisconnected(_event)
+    {
+        if (_event.gamepad.index != this._currentGamepadIndex) { return; }
+
+        this._currentGamepadIndex = null;
+    }
+
     AddKeyDownListener(_listener)
     {
         this._kdListeners.push(_listener);
@@ -1111,7 +1239,7 @@ export class KeyboardInputManager extends Component
 
     RemoveKeyDownListener(_listener)
     {
-        const _kdListenerIndex = this._kdListeners.findIndex((_listener) => _listener instanceof _componentType);
+        const _kdListenerIndex = this._kdListeners.indexOf(_listener);
 
         if (_kdListenerIndex == -1) { return; }
 
@@ -1125,11 +1253,74 @@ export class KeyboardInputManager extends Component
 
     RemoveKeyUpListener(_listener)
     {
-        const _kuListenerIndex = this._kuListeners.findIndex((_listener) => _listener instanceof _componentType);
+        const _kuListenerIndex = this._kuListeners.indexOf(_listener);
 
         if (_kuListenerIndex == -1) { return; }
 
         this._kuListeners.splice(_kuListenerIndex, 1);
+    }
+
+    AddGamepadButtonDownListener(_listener)
+    {
+        this._gpbdListeners.push(_listener);
+    }
+
+    RemoveGamepadButtonDownListener(_listener)
+    {
+        const _gpbdListenerIndex = this._gpbdListeners.indexOf(_listener);
+
+        if (_gpbdListenerIndex == -1) { return; }
+
+        this._gpbdListeners.splice(_gpbdListenerIndex, 1);
+    }
+
+    AddGamepadButtonUpListener(_listener)
+    {
+        this._gpbuListeners.push(_listener);
+    }
+
+    RemoveGamepadButtonUpListener(_listener)
+    {
+        const _gpbuListenerIndex = this._gpbuListeners.indexOf(_listener);
+
+        if (_gpbuListenerIndex == -1) { return; }
+
+        this._gpbuListeners.splice(_gpbuListenerIndex, 1);
+    }
+
+    AddGamepadLeftStickListener(_listener)
+    {
+        this._gplsListeners.push(_listener);
+    }
+
+    RemoveGamepadLeftStickListener(_listener)
+    {
+        const _gplsListenerIndex = this._gplsListeners.indexOf(_listener);
+
+        if (_gplsListenerIndex == -1) { return; }
+
+        this._gplsListeners.splice(_gplsListenerIndex, 1);
+    }
+
+    AddGamepadRightStickListener(_listener)
+    {
+        this._gprsListeners.push(_listener);
+    }
+
+    RemoveGamepadRightStickListener(_listener)
+    {
+        const _gprsListenerIndex = this._gprsListeners.indexOf(_listener);
+
+        if (_gprsListenerIndex == -1) { return; }
+
+        this._gprsListeners.splice(_gprsListenerIndex, 1);
+    }
+
+    get gamepad()
+    {
+        if (this._currentGamepadIndex == null) { return; }
+
+        return navigator.getGamepads()[this._currentGamepadIndex];
     }
 }
 
@@ -1145,7 +1336,7 @@ export class Scene
     Base_Start()
     {
         this.cursorManager = this.root.AddComponent(CursorManager);
-        this.keyboardInputManager = this.root.AddComponent(KeyboardInputManager);
+        this.inputManager = this.root.AddComponent(InputManager);
 
         this.Start();
     }
@@ -1225,6 +1416,12 @@ export class Engine
         this.ctx.imageSmoothingEnabled = imageSmoothing;
 
         this.SPRITE_PADDING = 1;
+        this.STANDARD_CONTROLLER_BUTTONS = 
+        [
+            "A", "B", "X", "Y", "L1", "R1", "L2", "R2",
+            "Back", "Start", "LStick", "RStick", "DPadUp",
+            "DPadDown", "DPadLeft", "DPadRight", "Home", "Touchpad"
+        ];
 
         this.missingTexture = new Image();
         this.missingTexture.src = "source/engine/textures/missingTextureA.png";
