@@ -5,12 +5,6 @@ class MainMenu extends Rebound.Scene
     constructor()
     {
         super();
-
-        this.OnGamepadButtonDown = this.OnGamepadButtonDown.bind(this);
-        this.OnGamepadButtonUp = this.OnGamepadButtonUp.bind(this);
-
-        this.OnGamepadLeftStick = this.OnGamepadLeftStick.bind(this);
-        this.OnGamepadRightStick = this.OnGamepadRightStick.bind(this);
     }
 
     Start()
@@ -33,31 +27,30 @@ class MainMenu extends Rebound.Scene
 
         _background.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(_texB, 0));
 
-        this.inputManager.AddGamepadButtonDownListener(this.OnGamepadButtonDown);
-        this.inputManager.AddGamepadButtonUpListener(this.OnGamepadButtonUp);
+        const _uiTestCanvas = new Rebound.GameObject(this, "UI Canvas");
+        const _uicanvas = _uiTestCanvas.AddComponent(Rebound.UICanvas);
 
-        this.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
-        this.inputManager.AddGamepadRightStickListener(this.OnGamepadRightStick);
-    }
+        const _uiTestA = new Rebound.GameObject(this, "UI Test A", _uiTestCanvas.transform);
+        const _uiTestB = new Rebound.GameObject(this, "UI Test B", _uiTestCanvas.transform);
 
-    OnGamepadButtonDown(_button, _name)
-    {
-        
-    }
+        _uiTestA.transform.localPosition = new Rebound.Vector2(128, 142);
+        _uiTestB.transform.localPosition = new Rebound.Vector2(128, 102);
 
-    OnGamepadButtonUp(_button, _name)
-    {
-        
-    }
+        const _texC = new Image();
+        _texC.src = "source/tireless/resources/textures/UI/tirelessButtonPrefab.png";
 
-    OnGamepadLeftStick(_valueX, _valueY)
-    {
-        
-    }
+        const _uirendA = _uiTestA.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(_texC, 1, undefined, new Rebound.Vector2(64, 32)));
+        const _uianimA = _uiTestA.AddComponent(Rebound.Animator, _uirendA, 4, 0, false, false);
 
-    OnGamepadRightStick(_valueX, _valueY)
-    {
-        
+        const _uielemA = _uiTestA.AddComponent(Rebound.UIElement, _uicanvas, _uianimA, undefined, 64, 32);
+
+        const _uirendB = _uiTestB.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(_texC, 1, undefined, new Rebound.Vector2(64, 32)));
+        const _uianimB = _uiTestB.AddComponent(Rebound.Animator, _uirendB, 4, 0, false, false);
+
+        const _uielemB = _uiTestB.AddComponent(Rebound.UIElement, _uicanvas, _uianimB, undefined, 64, 32);
+
+        _uielemA.text.text = "PLAY";
+        _uielemB.text.text = "SETTINGS";
     }
 }
 

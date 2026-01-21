@@ -38,7 +38,7 @@ class InteractableBox extends Rebound.CursorBoxCollider
 
 class TextBox extends InteractableBox
 {
-    constructor(gameObject, layer=0, width=50, height=50, tracker=null, renderer=null, onEnterPressed=null)
+    constructor(gameObject, width=50, height=50, tracker=null, renderer=null, onEnterPressed=null)
     {
         super(gameObject, width, height, tracker);
 
@@ -450,7 +450,10 @@ class TilemapEditor extends Rebound.Scene
     constructor()
     {
         super();
+    }
 
+    Start()
+    {
         this.resolutionManager = new Rebound.GameObject(this, "ResolutionManager");
 
         this.resolutionManager.transform.localPosition = new Rebound.Vector2(20, 348);
@@ -468,7 +471,7 @@ class TilemapEditor extends Rebound.Scene
 
         this.OnEnterPressed = this.OnEnterPressed.bind(this);
 
-        this.resolutionTextBox = this.textBoxObject.AddComponent(TextBox, 0, 20, 20, null, this.resolutionRenderer, this.OnEnterPressed);
+        this.resolutionTextBox = this.textBoxObject.AddComponent(TextBox, 100, 100, null, this.resolutionRenderer, this.OnEnterPressed);
 
         this.tileManager = new Rebound.GameObject(this, "TileManager");
 

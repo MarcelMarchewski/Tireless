@@ -501,14 +501,26 @@ export class CursorManager extends Component
     {
         super(gameObject);
 
-        this._cursorPosition = Vector2.zero;
-
         this.Internal_SetCursorPosition = this.Internal_SetCursorPosition.bind(this);
+
+        this._cPosListeners = [];
+
+        this._cursorPosition = Vector2.zero;
     }
 
     Internal_SetCursorPosition(_event)
     {
-        this._cursorPosition = new Vector2(Math.round(_event.clientX - (window.innerWidth / 2 - Engine.I.width / 2)), Engine.I.height - Math.round(_event.clientY - (window.innerHeight / 2 - Engine.I.height / 2)));
+        const _rect = Engine.I.c.getBoundingClientRect();
+
+        const _x = Math.round((_event.clientX - _rect.left) / Engine.I.scale.x);
+        const _y = Math.round((_event.clientY - _rect.top) / Engine.I.scale.y);
+
+        this._cursorPosition = new Vector2(_x, Engine.I.height - _y);
+
+        for (let i = 0; i < this._cPosListeners.length; i++)
+        {
+            this._cPosListeners[i](this._cursorPosition);
+        }
     }
 
     Start()
@@ -535,16 +547,33 @@ export class CursorManager extends Component
     {
         return this._cursorPosition;
     }
+
+    AddCursorPositionListener(_listener)
+    {
+        this._cPosListeners.push(_listener);
+    }
+
+    RemoveCursorPositionListener(_listener)
+    {
+        const _cPosListenerIndex = this._cPosListeners.indexOf(_listener);
+
+        if (_cPosListenerIndex == -1) { return; }
+
+        this._cPosListeners.splice(_cPosListenerIndex, 1);
+    }
 }
 
 export class CursorBoxCollider extends Component
 {
-    constructor(gameObject, width=128, height=128)
+    constructor(gameObject, width=32, height=32)
     {
         super(gameObject);
 
         this.width = width;
         this.height = height;
+
+        this.Base_OnClickStart = this.Base_OnClickStart.bind(this);
+        this.Base_OnClickEnd = this.Base_OnClickEnd.bind(this);
 
         this._cursorManager = this.gameObject.scene.cursorManager;
 
@@ -553,6 +582,9 @@ export class CursorBoxCollider extends Component
 
     Base_OnCursorCollideStart()
     {
+        Engine.I.c.addEventListener("mousedown", this.Base_OnClickStart);
+        Engine.I.c.addEventListener("mouseup", this.Base_OnClickEnd);
+
         this.OnCursorCollideStart();
     }
 
@@ -561,8 +593,21 @@ export class CursorBoxCollider extends Component
         this.OnCursorCollideUpdate();
     }
 
+    Base_OnClickStart(_event)
+    {
+        this.OnClickStart(_event);
+    }
+
+    Base_OnClickEnd(_event)
+    {
+        this.OnClickEnd(_event);
+    }
+
     Base_OnCursorCollideEnd()
     {
+        Engine.I.c.removeEventListener("mousedown", this.Base_OnClickStart);
+        Engine.I.c.removeEventListener("mouseup", this.Base_OnClickEnd);
+
         this.OnCursorCollideEnd();
     }
 
@@ -570,11 +615,10 @@ export class CursorBoxCollider extends Component
     {
         const _cursorPos = this._cursorManager.cursorPosition;
 
-        // possibly refactor to use scale only
-        if (_cursorPos.x >= this.gameObject.transform.position.x - this.width * this.gameObject.transform.scale.x 
-        && _cursorPos.x <= this.gameObject.transform.position.x + this.width * this.gameObject.transform.scale.x
-        && _cursorPos.y >= this.gameObject.transform.position.y - this.height * this.gameObject.transform.scale.y
-        && _cursorPos.y <= this.gameObject.transform.position.y + this.height * this.gameObject.transform.scale.y
+        if (_cursorPos.x >= this.gameObject.transform.position.x - this.width / 2 
+        && _cursorPos.x <= this.gameObject.transform.position.x + this.width / 2
+        && _cursorPos.y >= this.gameObject.transform.position.y - this.height / 2
+        && _cursorPos.y <= this.gameObject.transform.position.y + this.height / 2
         )
         {
             if (this._isColliding)
@@ -601,6 +645,10 @@ export class CursorBoxCollider extends Component
     OnCursorCollideStart() {  }
 
     OnCursorCollideUpdate() {  }
+
+    OnClickStart(_event) {  }
+
+    OnClickEnd(_event) {  }
 
     OnCursorCollideEnd() {  }
 }
@@ -996,12 +1044,14 @@ export class TilemapRenderer extends SpriteRenderer
 
 export class TextData
 {
-    constructor(gameObject, text="Text here...", font="12px serif", layer=0)
+    constructor(gameObject, text="Text here...", font="12px serif", colour="black", layer=0)
     {
         this.gameObject = gameObject;
 
         this.text = text;
         this.font = font;
+
+        this.colour = colour;
 
         this.layer = layer;
 
@@ -1035,6 +1085,10 @@ export class InputManager extends Component
     {
         super(gameObject);
 
+        this.inputMode = 0;
+
+        this.OnCursorPositionUpdate = this.OnCursorPositionUpdate.bind(this);
+
         this.OnKeyDown = this.OnKeyDown.bind(this);
         this.OnKeyUp = this.OnKeyUp.bind(this);
 
@@ -1064,6 +1118,8 @@ export class InputManager extends Component
     {
         if (!this._bound)
         {
+            this.gameObject.scene.cursorManager.AddCursorPositionListener(this.OnCursorPositionUpdate);
+
             document.addEventListener("keydown", this.OnKeyDown);
             document.addEventListener("keyup", this.OnKeyUp);
 
@@ -1170,8 +1226,15 @@ export class InputManager extends Component
         }
     }
 
+    OnCursorPositionUpdate()
+    {
+        this.inputMode = 0;
+    }
+
     OnKeyDown(_event)
     {
+        this.inputMode = 0;
+
         for (let i = 0; i < this._kdListeners.length; i++)
         {
             this._kdListeners[i](_event);
@@ -1188,6 +1251,8 @@ export class InputManager extends Component
 
     OnGamepadButtonDown(_button, _name)
     {
+        this.inputMode = 1;
+
         for (let i = 0; i < this._gpbdListeners.length; i++)
         {
             this._gpbdListeners[i](_button, _name);
@@ -1204,6 +1269,8 @@ export class InputManager extends Component
 
     OnGamepadLeftStick(_valueX, _valueY)
     {
+        this.inputMode = 1;
+
         for (let i = 0; i < this._gplsListeners.length; i++)
         {
             this._gplsListeners[i](_valueX, _valueY);
@@ -1212,6 +1279,8 @@ export class InputManager extends Component
 
     OnGamepadRightStick(_valueX, _valueY)
     {
+        this.inputMode = 1;
+
         for (let i = 0; i < this._gprsListeners.length; i++)
         {
             this._gprsListeners[i](_valueX, _valueY);
@@ -1321,6 +1390,381 @@ export class InputManager extends Component
         if (this._currentGamepadIndex == null) { return; }
 
         return navigator.getGamepads()[this._currentGamepadIndex];
+    }
+}
+
+export class UIElement extends CursorBoxCollider
+{
+    constructor(gameObject, canvas, animator, text=new TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", 100), width=32, height=32, interactable=true)
+    {
+        super(gameObject, width, height);
+
+        this.canvas = canvas;
+        this.animator = animator;
+
+        this.text = text;
+        this.text.Enqueue();
+
+        this.interactable = interactable;
+
+        this._hovering = false;
+
+        this._bound = false;
+    }
+
+    Start()
+    {
+        if (!this._bound)
+        {
+            this.canvas.AddElement(this);
+            this._bound = true;
+        }
+    }
+
+    OnEnable()
+    {
+        if (!this._bound)
+        {
+            this.canvas.AddElement(this);
+            this._bound = true;
+        }   
+    }
+
+    OnDisable()
+    {
+        if (this._bound)
+        {
+            this.canvas.RemoveElement(this);
+            this._bound = false;
+        }
+    }
+
+    OnRemove()
+    {
+        if (this._bound)
+        {
+            this.canvas.RemoveComponent(this);
+            this._bound = false;
+        }
+    }
+
+    Base_OnUIHoverStart()
+    {
+        if (!this._interactable) { return; }
+
+        this.animator.JumpToFrame(1);
+
+        this.OnUIHoverStart();
+    }
+
+    Base_OnUIClickStart()
+    {
+        if (!this._interactable) { return; }
+
+        this.animator.JumpToFrame(2);
+
+        this.OnUIClickStart();
+    }
+
+    Base_OnUIClickEnd()
+    {
+        if (!this._interactable) { return; }
+
+        this.animator.JumpToFrame(1);
+
+        this.OnUIClickEnd();
+    }
+
+    Base_OnUIHoverEnd()
+    {
+        if (!this._interactable) { return; }
+
+        this.animator.JumpToFrame(0);
+
+        this.OnUIHoverEnd();
+    }
+
+    OnCursorCollideStart()
+    {
+        this._hovering = true;
+        this.Base_OnUIHoverStart();
+    }
+
+    OnClickStart()
+    {
+        this.Base_OnUIClickStart();
+    }
+
+    OnClickEnd()
+    {
+        this.Base_OnUIClickEnd();
+    }
+
+    OnCursorCollideEnd()
+    {
+        this._hovering = false;
+        this.Base_OnUIHoverEnd();
+    }
+
+    OnUIHoverStart() {  }
+
+    OnUIClickStart() {  }
+
+    OnUIClickEnd() {  }
+
+    OnUIHoverEnd() {  }
+
+    get interactable()
+    {
+        return this._interactable;
+    }
+
+    set interactable(_value)
+    {
+        if (this._interactable == _value) { return; }
+
+        if (_value)
+        {
+            if (this._hovering)
+            {
+                this.animator.JumpToFrame(1);
+            }
+
+            else
+            {
+                this.animator.JumpToFrame(0);
+            }
+        }
+
+        else
+        {
+            this.animator.JumpToFrame(3);
+        }
+
+        this._interactable = _value;
+    }
+
+    get hovering()
+    {
+        return this._hovering;
+    }
+}
+
+export class UICanvas extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+
+        this.OnGamepadButtonDown = this.OnGamepadButtonDown.bind(this);
+        this.OnGamepadButtonUp = this.OnGamepadButtonUp.bind(this);
+
+        this.OnGamepadLeftStick = this.OnGamepadLeftStick.bind(this);
+
+        this._elements = [];
+
+        this._currentElementIndex = null;
+
+        this._indexChangeTimer = 0;
+        this._indexChangeCooldown = 0.25;
+    }
+
+    Update()
+    {
+        this.Internal_CheckInputMode();
+
+        if (this._indexChangeTimer <= 0)
+        {
+            this._indexChangeTimer = 0;
+            return;
+        }
+
+        this._indexChangeTimer -= Engine.I.deltaTime;
+    }
+
+    Internal_CheckInputMode()
+    {
+        if (this.gameObject.scene.inputManager.inputMode == 0)
+        {
+            if (this._currentElementIndex != null)
+            {
+                this.Internal_RemoveListeners();
+
+                if (!this._elements[this._currentElementIndex].hovering)
+                {
+                    this._elements[this._currentElementIndex].Base_OnUIHoverEnd();
+                }
+
+                this._currentElementIndex = null;
+            }
+
+            return;
+        }
+
+        if (this._currentElementIndex == null)
+        {
+            this.Internal_AddListeners();
+
+            this._currentElementIndex = this.Internal_FindNextInteractableIndex(-1, 1);
+
+            if (this._currentElementIndex != null)
+            {
+                this._elements[this._currentElementIndex].Base_OnUIHoverStart();
+            }
+        }
+    }
+
+    Internal_AddListeners()
+    {
+        this.gameObject.scene.inputManager.AddGamepadButtonDownListener(this.OnGamepadButtonDown);
+        this.gameObject.scene.inputManager.AddGamepadButtonUpListener(this.OnGamepadButtonUp);
+
+        this.gameObject.scene.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
+    }
+
+    Internal_RemoveListeners()
+    {
+        this.gameObject.scene.inputManager.RemoveGamepadButtonDownListener(this.OnGamepadButtonDown);
+        this.gameObject.scene.inputManager.RemoveGamepadButtonUpListener(this.OnGamepadButtonUp);
+
+        this.gameObject.scene.inputManager.RemoveGamepadLeftStickListener(this.OnGamepadLeftStick);
+    }
+
+    Internal_FindNextInteractableIndex(_startIndex, _direction)
+    {
+        if (this._elements.length == 0) { return null; }
+
+        let _index = _startIndex;
+        let _checked = 0;
+
+        while (_checked < this._elements.length)
+        {
+            _index += _direction;
+
+            if (_index >= this._elements.length) { _index = 0; }
+
+            else if (_index < 0) { _index = this._elements.length - 1; }
+
+            if (this._elements[_index].interactable)
+            {
+                return _index;
+            }
+
+            _checked++;
+        }
+
+        return null;
+    }
+
+    Internal_IncrementElementIndex()
+    {
+        const _nextIndex = this.Internal_FindNextInteractableIndex(this._currentElementIndex, 1);
+
+        if (_nextIndex == null) { return; }
+
+        this._elements[this._currentElementIndex].Base_OnUIHoverEnd();
+
+        this._currentElementIndex = _nextIndex;
+
+        this._elements[this._currentElementIndex].Base_OnUIHoverStart();
+    }
+
+    Internal_DecrementElementIndex()
+    {
+        const _nextIndex = this.Internal_FindNextInteractableIndex(this._currentElementIndex, -1);
+
+        if (_nextIndex == null) { return; }
+
+        this._elements[this._currentElementIndex].Base_OnUIHoverEnd();
+
+        this._currentElementIndex = _nextIndex;
+
+        this._elements[this._currentElementIndex].Base_OnUIHoverStart();
+    }
+
+    OnGamepadButtonDown(_button, _name)
+    {
+        switch (_name)
+        {
+            case ("A"):
+            {
+                if (this._currentElementIndex == null) { break; }
+
+                this._elements[this._currentElementIndex].OnClickStart();
+
+                break;
+            }
+
+            case ("DPadUp"):
+            {
+                this.Internal_IncrementElementIndex();
+
+                break;
+            }
+
+            case ("DPadDown"):
+            {
+                this.Internal_DecrementElementIndex();
+
+                break;
+            }
+        }
+    }
+
+    OnGamepadButtonUp(_button, _name)
+    {
+        switch (_name)
+        {
+            case ("A"):
+            {
+                if (this._currentElementIndex == null) { break; }
+
+                this._elements[this._currentElementIndex].OnClickEnd();
+
+                break;
+            }
+        }
+    }
+
+    OnGamepadLeftStick(_valueX, _valueY)
+    {
+        if (this._indexChangeTimer > 0) { return; }
+
+        if (_valueY <= -0.5)
+        {
+            this.Internal_IncrementElementIndex();
+
+            this._indexChangeTimer = this._indexChangeCooldown;
+        }
+
+        else if (_valueY >= 0.5)
+        {
+            this.Internal_DecrementElementIndex();
+
+            this._indexChangeTimer = this._indexChangeCooldown;
+        }
+    }
+
+    AddElement(_element)
+    {
+        this._elements.push(_element);
+
+        this._elements.sort
+        (
+            (_a, _b) => 
+            {
+                return _b.gameObject.transform.position.y - _a.gameObject.transform.position.y;
+            }
+        );
+    }
+
+    RemoveElement(_element)
+    {
+        const _elementIndex = this._elements.indexOf(_element);
+
+        if (_elementIndex == -1) { return; }
+
+        this._elements.splice(_elementIndex, 1);
     }
 }
 
@@ -1595,6 +2039,10 @@ export class Engine
 
                 this.ctx.font = this._renderQueue[i].font;
 
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "middle";
+
+                this.ctx.fillStyle = this._renderQueue[i].colour;
                 this.ctx.fillText(this._renderQueue[i].text, 0, 0);
 
                 this.ctx.restore();
@@ -1633,7 +2081,26 @@ export class Engine
     {
         this._renderQueue.push(_renderer);
 
-        this._renderQueue.sort((_a, _b) => { return _a.sprite.layer - _b.sprite.layer });
+        this._renderQueue.sort(
+        (_a, _b) => 
+        { 
+            let _layerA, _layerB;
+
+            if (_a.sprite != undefined && _b.sprite != undefined)
+            {
+                _layerA = _a.sprite.layer;
+                _layerB = _b.sprite.layer;
+            }
+
+            else
+            {
+                _layerA = _a.layer;
+                _layerB = _b.layer;
+            }
+
+            return _layerA - _layerB;
+        }
+        );
     }
 
     RemoveFromRenderQueue(_targetRenderer)
