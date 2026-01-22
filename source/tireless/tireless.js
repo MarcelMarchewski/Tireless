@@ -1,6 +1,6 @@
 import * as Rebound from "/source/engine/rebound.js";
 
-class GameObjectToggleButton extends Rebound.UIElement
+class EntityToggleButton extends Rebound.UIElement
 {
     constructor(gameObject, canvas, animator, target, text=new Rebound.TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", 100), width=32, height=32, interactable=true)
     {   
@@ -9,7 +9,7 @@ class GameObjectToggleButton extends Rebound.UIElement
         this.target = target;
     }
 
-    OnUIClickStart()
+    OnUIClickEnd()
     {
         this.target.enabled = !this.target.enabled;
     }
@@ -57,12 +57,12 @@ class MainMenu extends Rebound.Scene
         const _uirendA = _uiTestA.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(_texC, 1, undefined, new Rebound.Vector2(64, 32)));
         const _uianimA = _uiTestA.AddComponent(Rebound.Animator, _uirendA, 4, 0, false, false);
 
-        const _uielemA = _uiTestA.AddComponent(GameObjectToggleButton, _uicanvas, _uianimA, _uiTestB, undefined, 64, 32);
+        const _uielemA = _uiTestA.AddComponent(EntityToggleButton, _uicanvas, _uianimA, _uiTestCanvas, undefined, 64, 32);
 
         const _uirendB = _uiTestB.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(_texC, 1, undefined, new Rebound.Vector2(64, 32)));
         const _uianimB = _uiTestB.AddComponent(Rebound.Animator, _uirendB, 4, 0, false, false);
 
-        const _uielemB = _uiTestB.AddComponent(GameObjectToggleButton, _uicanvas, _uianimB, _uiTestA, undefined, 64, 32);
+        const _uielemB = _uiTestB.AddComponent(EntityToggleButton, _uicanvas, _uianimB, _uiTestCanvas, undefined, 64, 32);
 
         _uielemA.text.text = "PLAY";
         _uielemB.text.text = "SETTINGS";

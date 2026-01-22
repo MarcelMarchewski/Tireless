@@ -445,7 +445,19 @@ export class GameObject extends Entity
     {
         const _parentGO = _target.parent?.gameObject;
 
-        _target.gameObject.parentEnabled = _parentGO ? (_parentGO.enabled && _parentGO.parentEnabled) : true;
+        const _newParentEnabled = _parentGO ? (_parentGO.enabled && _parentGO.parentEnabled) : true
+
+        const _didChange = _target.gameObject.parentEnabled != _newParentEnabled;
+
+        if (_didChange)
+        {
+            _target.gameObject.parentEnabled = _newParentEnabled;
+
+            for (let i = 0; i < _target.gameObject.componentCount; i++)
+            {
+                _newParentEnabled ? _target.gameObject._components[i].OnEnable() : _target.gameObject._components[i].OnDisable();
+            }
+        }
 
         for (let i = 0; i < _target.childCount; i++)
         {
@@ -467,7 +479,7 @@ export class Component extends Entity
 
     Base_Start()
     {
-        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled && !this._hasStarted)
+        if (this.enabled && !this._hasStarted)
         {
             this.Start();
 
@@ -477,7 +489,7 @@ export class Component extends Entity
 
     Base_Update()
     {
-        if (this.enabled && this.gameObject.enabled && this.gameObject.parentEnabled)
+        if (this.enabled)
         {
             this.Update();
         }
@@ -2121,18 +2133,12 @@ export class Engine
         this._renderQueue.sort(
         (_a, _b) => 
         { 
-            let _layerA, _layerB;
+            let _layerA = _a.sprite ? _a.sprite.layer : _a.layer;
+            let _layerB  = _b.sprite ? _b.sprite.layer : _b.layer;
 
-            if (_a.sprite != undefined && _b.sprite != undefined)
+            if (_layerA == _layerB)
             {
-                _layerA = _a.sprite.layer;
-                _layerB = _b.sprite.layer;
-            }
-
-            else
-            {
-                _layerA = _a.layer;
-                _layerB = _b.layer;
+                return this._renderQueue.indexOf(_a) - this._renderQueue.indexOf(_b);
             }
 
             return _layerA - _layerB;
