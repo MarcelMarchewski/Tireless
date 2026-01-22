@@ -426,7 +426,7 @@ export class GameObject extends Entity
     {
         if (this._enabled == _value) { return; }
 
-        this._enabled = _value;
+        super.enabled = _value;
 
         this.Internal_TraverseAndSetEnableState();
 
@@ -592,10 +592,27 @@ export class CursorBoxCollider extends Component
         this._isColliding = false;
     }
 
-    Base_OnCursorCollideStart()
+    OnDisable()
+    {
+        this.Internal_RemoveListeners();
+        this._isColliding = false;
+    }
+
+    Internal_AddListeners()
     {
         Engine.I.c.addEventListener("mousedown", this.Base_OnClickStart);
         Engine.I.c.addEventListener("mouseup", this.Base_OnClickEnd);
+    }
+
+    Internal_RemoveListeners()
+    {
+        Engine.I.c.removeEventListener("mousedown", this.Base_OnClickStart);
+        Engine.I.c.removeEventListener("mouseup", this.Base_OnClickEnd);
+    }
+
+    Base_OnCursorCollideStart()
+    {
+        this.Internal_AddListeners();
 
         this.OnCursorCollideStart();
     }
@@ -617,8 +634,7 @@ export class CursorBoxCollider extends Component
 
     Base_OnCursorCollideEnd()
     {
-        Engine.I.c.removeEventListener("mousedown", this.Base_OnClickStart);
-        Engine.I.c.removeEventListener("mouseup", this.Base_OnClickEnd);
+        this.Internal_RemoveListeners();
 
         this.OnCursorCollideEnd();
     }
@@ -1407,7 +1423,7 @@ export class InputManager extends Component
 
 export class UIElement extends CursorBoxCollider
 {
-    constructor(gameObject, canvas, animator, text=new TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", 100), width=32, height=32, interactable=true)
+    constructor(gameObject, canvas, animator, text=new TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, interactable=true)
     {
         super(gameObject, width, height);
 
@@ -1445,6 +1461,8 @@ export class UIElement extends CursorBoxCollider
 
     OnDisable()
     {
+        super.OnDisable();
+
         if (this._bound)
         {
             this.canvas.RemoveElement(this);
@@ -1915,6 +1933,9 @@ export class Engine
             "Back", "Start", "LStick", "RStick", "DPadUp",
             "DPadDown", "DPadLeft", "DPadRight", "Home", "Touchpad"
         ];
+
+        this.UI_DEFAULT_LAYER = 100;
+        this.UI_TEXT_DEFAULT_LAYER = 150;
 
         this.missingTexture = new Image();
         this.missingTexture.src = "source/engine/textures/missingTextureA.png";
