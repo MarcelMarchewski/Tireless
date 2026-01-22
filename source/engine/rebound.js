@@ -1403,7 +1403,6 @@ export class UIElement extends CursorBoxCollider
         this.animator = animator;
 
         this.text = text;
-        this.text.Enqueue();
 
         this.interactable = interactable;
 
@@ -1417,6 +1416,7 @@ export class UIElement extends CursorBoxCollider
         if (!this._bound)
         {
             this.canvas.AddElement(this);
+            this.text.Enqueue();
             this._bound = true;
         }
     }
@@ -1426,6 +1426,7 @@ export class UIElement extends CursorBoxCollider
         if (!this._bound)
         {
             this.canvas.AddElement(this);
+            this.text.Enqueue();
             this._bound = true;
         }   
     }
@@ -1435,6 +1436,7 @@ export class UIElement extends CursorBoxCollider
         if (this._bound)
         {
             this.canvas.RemoveElement(this);
+            this.text.Deque();
             this._bound = false;
         }
     }
@@ -1443,7 +1445,8 @@ export class UIElement extends CursorBoxCollider
     {
         if (this._bound)
         {
-            this.canvas.RemoveComponent(this);
+            this.canvas.RemoveElement(this);
+            this.text.Deque();
             this._bound = false;
         }
     }
@@ -1563,7 +1566,7 @@ export class UICanvas extends Component
 
         this._elements = [];
 
-        this._currentElementIndex = null;
+        this._currentElement = null;
 
         this._indexChangeTimer = 0;
         this._indexChangeCooldown = 0.25;
@@ -1586,30 +1589,30 @@ export class UICanvas extends Component
     {
         if (this.gameObject.scene.inputManager.inputMode == 0)
         {
-            if (this._currentElementIndex != null)
+            if (this._currentElement != null)
             {
                 this.Internal_RemoveListeners();
 
-                if (!this._elements[this._currentElementIndex].hovering)
+                if (!this._currentElement.hovering)
                 {
-                    this._elements[this._currentElementIndex].Base_OnUIHoverEnd();
+                    this._currentElement.Base_OnUIHoverEnd();
                 }
 
-                this._currentElementIndex = null;
+                this._currentElement = null;
             }
 
             return;
         }
 
-        if (this._currentElementIndex == null)
+        if (this._currentElement == null)
         {
             this.Internal_AddListeners();
 
-            this._currentElementIndex = this.Internal_FindNextInteractableIndex(-1, 1);
+            this._currentElement = this.Internal_FindNextInteractable(this._elements[this._elements.length - 1], 1);
 
-            if (this._currentElementIndex != null)
+            if (this._currentElement != null)
             {
-                this._elements[this._currentElementIndex].Base_OnUIHoverStart();
+                this._currentElement.Base_OnUIHoverStart();
             }
         }
     }
@@ -1630,11 +1633,14 @@ export class UICanvas extends Component
         this.gameObject.scene.inputManager.RemoveGamepadLeftStickListener(this.OnGamepadLeftStick);
     }
 
-    Internal_FindNextInteractableIndex(_startIndex, _direction)
+    Internal_FindNextInteractable(_startElement, _direction)
     {
         if (this._elements.length == 0) { return null; }
 
-        let _index = _startIndex;
+        let _index = this._elements.indexOf(_startElement);
+
+        if (_index == -1) { return; }
+
         let _checked = 0;
 
         while (_checked < this._elements.length)
@@ -1647,7 +1653,7 @@ export class UICanvas extends Component
 
             if (this._elements[_index].interactable)
             {
-                return _index;
+                return this._elements[_index];
             }
 
             _checked++;
@@ -1658,28 +1664,28 @@ export class UICanvas extends Component
 
     Internal_IncrementElementIndex()
     {
-        const _nextIndex = this.Internal_FindNextInteractableIndex(this._currentElementIndex, 1);
+        const _nextElement = this.Internal_FindNextInteractable(this._currentElement, 1);
 
-        if (_nextIndex == null) { return; }
+        if (_nextElement == null) { return; }
 
-        this._elements[this._currentElementIndex].Base_OnUIHoverEnd();
+        this._currentElement.Base_OnUIHoverEnd();
 
-        this._currentElementIndex = _nextIndex;
+        this._currentElement = _nextElement;
 
-        this._elements[this._currentElementIndex].Base_OnUIHoverStart();
+        this._currentElement.Base_OnUIHoverStart();
     }
 
     Internal_DecrementElementIndex()
     {
-        const _nextIndex = this.Internal_FindNextInteractableIndex(this._currentElementIndex, -1);
+        const _nextElement = this.Internal_FindNextInteractable(this._currentElement, -1);
 
-        if (_nextIndex == null) { return; }
+        if (_nextElement == null) { return; }
 
-        this._elements[this._currentElementIndex].Base_OnUIHoverEnd();
+        this._currentElement.Base_OnUIHoverEnd();
 
-        this._currentElementIndex = _nextIndex;
+        this._currentElement = _nextElement;
 
-        this._elements[this._currentElementIndex].Base_OnUIHoverStart();
+        this._currentElement.Base_OnUIHoverStart();
     }
 
     OnGamepadButtonDown(_button, _name)
@@ -1688,9 +1694,9 @@ export class UICanvas extends Component
         {
             case ("A"):
             {
-                if (this._currentElementIndex == null) { break; }
+                if (this._currentElement == null) { break; }
 
-                this._elements[this._currentElementIndex].OnClickStart();
+                this._currentElement.OnClickStart();
 
                 break;
             }
@@ -1717,9 +1723,9 @@ export class UICanvas extends Component
         {
             case ("A"):
             {
-                if (this._currentElementIndex == null) { break; }
+                if (this._currentElement == null) { break; }
 
-                this._elements[this._currentElementIndex].OnClickEnd();
+                this._currentElement.OnClickEnd();
 
                 break;
             }
@@ -1764,7 +1770,38 @@ export class UICanvas extends Component
 
         if (_elementIndex == -1) { return; }
 
+        const _currentRemoved = _element == this._currentElement;
+
+        if (_currentRemoved && this._currentElement != null)
+        {
+            this._currentElement.Base_OnUIHoverEnd();
+        }
+
         this._elements.splice(_elementIndex, 1);
+
+        if (this._elements.length == 0)
+        {
+            this._currentElement = null;
+            return;
+        }
+
+        if (!_currentRemoved && _elementIndex < this._currentElementIndex)
+        {
+            this._currentElement--;
+            return;
+        }
+
+        if (_currentRemoved)
+        {
+            const _nextElement = this.Internal_FindNextInteractable(_elementIndex - 1, 1);
+
+            this._currentElement = _nextElement;
+
+            if (this._currentElement != null)
+            {
+                this._currentElement.Base_OnUIHoverStart();
+            }
+        }
     }
 }
 
