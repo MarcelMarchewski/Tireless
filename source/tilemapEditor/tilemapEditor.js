@@ -376,7 +376,7 @@ class TileSlot extends Rebound.GameObject
         this.OnCursorCollideStarted = this.OnCursorCollideStarted.bind(this);
         this.OnCursorCollideEnded = this.OnCursorCollideEnded.bind(this);
 
-        this.interactionManager = this.AddComponent(InteractableBox, scale, scale, undefined, this.OnClicked, this.OnCursorCollideStarted, this.OnCursorCollideEnded);
+        this.interactionManager = this.AddComponent(InteractableBox, scale * 2, scale * 2, undefined, this.OnClicked, this.OnCursorCollideStarted, this.OnCursorCollideEnded);
 
         this._defaultTex = new Image();
         this._defaultTex.src = "source/tilemapEditor/textures/editor/tileEmpty.png";
@@ -527,8 +527,8 @@ class TilemapViewer extends Rebound.Scene
     }
 }
 
-const _e = new Rebound.Engine(256, 368);
+const _e = new Rebound.Engine(256, 368, new Rebound.Vector2(2, 2));
 
-const _s = new TilemapViewer();
+const _s = new TilemapEditor();
 
 Rebound.Engine.I.AddToScenes(_s);

@@ -3,3 +3,18 @@
     font-family: "VCR_OSD_MONO";
     src: url("VCR_OSD_MONO_1.001.ttf");
 }
+
+#playButton
+{
+    font-family: "VCR_OSD_MONO";
+    font-size: 40px;
+
+    margin: 0;
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    -ms-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+}

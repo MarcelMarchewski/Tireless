@@ -598,6 +598,12 @@ export class CursorBoxCollider extends Component
         this._isColliding = false;
     }
 
+    OnRemove()
+    {
+        this.Internal_RemoveListeners();
+        this._isColliding = false;
+    }
+
     Internal_AddListeners()
     {
         Engine.I.c.addEventListener("mousedown", this.Base_OnClickStart);
@@ -726,7 +732,20 @@ export class Sprite
 
         else
         {
-            this._sourceDimensions = new Vector2(this.texture.width, this.texture.height);
+            if (this.texture.complete)
+            {
+                this._sourceDimensions = new Vector2(this.texture.width, this.texture.height);
+            }
+
+            else
+            {
+                this._sourceDimensions = Vector2.zero;
+
+                this.texture.onload = () => 
+                {
+                    this._sourceDimensions = new Vector2(this.texture.width, this.texture.height);
+                }
+            }
         }
     }
 }
@@ -796,44 +815,309 @@ export class SpriteRenderer extends Component
     }
 }
 
-export class AudioPlayer extends Component
+export class AudioMixer
 {
-    constructor(gameObject, file, doAutoCatchup=false)
+    constructor(volume=1, muted=false, parentMixer=null)
+    {
+        this.volume = volume;
+
+        this.muted = muted;
+
+        this.parentMixer = parentMixer;
+    }
+
+    get localVolumePure()
+    {
+        return this._volume;
+    }
+
+    get localVolume()
+    {
+        return this._volume * this._muteValue;
+    }
+
+    get volume()
+    {
+        if (this._parentMixer != null)
+        {
+            return this._volume * this._parentMixer.volume * this._muteValue;
+        }
+
+        else
+        {
+            return this.localVolume;
+        }
+    }
+
+    set volume(_value)
+    {
+        this._volume = _value;
+    }
+
+    get muted()
+    {
+        return this._muteValue == 0;
+    }
+
+    set muted(_value)
+    {
+        if (_value)
+        {
+            this._muteValue = 0;
+        }
+
+        else
+        {
+            this._muteValue = 1;
+        }
+    }
+
+    get parentMixer()
+    {
+        return this._parentMixer;
+    }
+
+    set parentMixer(_newParentMixer)
+    {
+        this._parentMixer = _newParentMixer;
+    }
+}
+
+export class AudioManager extends Component
+{
+    constructor(gameObject)
     {
         super(gameObject);
 
-        this._audio = new Audio(file);
+        this.ctx = new window.AudioContext();
 
-        this._doAutoCatchup = doAutoCatchup;
+        this._audioPlayers = [];
     }
 
-    get audio()
+    get masterVolume()
     {
-        return this._audio;
+        return Engine.I.masterVolume;
     }
 
-    Play()
+    set masterVolume(_value)
     {
-        if (this._audio.readyState != 4)
+        Engine.I.masterVolume = _value;
+
+        for (let i = 0; i < this._audioPlayers.length; i++)
         {
-            this._audio.autoplay = this._doAutoCatchup;
+            this._audioPlayers[i].Internal_SetVolume();
+        }
+    }
 
-            return;
+    AddAudioPlayer(_player)
+    {
+        this._audioPlayers.push(_player);
+    }
+
+    RemoveAudioPlayer(_player)
+    {
+        const _playerIndex = this._audioPlayers.indexOf(_player);
+
+        if (_playerIndex == -1) { return; }
+
+        this._audioPlayers.splice(_playerIndex, 1);
+    }
+}
+
+export class AudioPlayer extends Component
+{
+    constructor(gameObject, file, mixer, volume=1, loop=false, doAutoCatchup=false)
+    {
+        super(gameObject);
+
+        this.volume = volume;
+        this.loop = loop;
+        
+        this.mixer = mixer;
+
+        this.muted = false;
+
+        this.onEnded = null;
+
+        this._file = file;
+        this._doAutoCatchup = doAutoCatchup;
+
+        this._buffer = null;
+        this._src = null;
+        this._playing = false;
+        
+        this._startTime = 0;
+        this._pauseTime = 0;
+
+        this._ctx = this.gameObject.scene.audioManager.ctx;
+
+        this._gain = this._ctx.createGain();
+        this._gain.connect(this._ctx.destination);
+
+        this.LoadAudio = this.LoadAudio.bind(this);
+    }
+
+    async LoadAudio()
+    {
+        const _data = await fetch(this._file);
+        const _arrayBuffer = await _data.arrayBuffer();
+
+        this._buffer = await this._ctx.decodeAudioData(_arrayBuffer);
+    }
+
+    Start()
+    {
+        this.gameObject.scene.audioManager.AddAudioPlayer(this);
+    }
+
+    OnEnable()
+    {
+        this.gameObject.scene.audioManager.AddAudioPlayer(this);
+    }
+
+    OnDisable()
+    {
+        this.gameObject.scene.audioManager.RemoveAudioPlayer(this);
+    }
+
+    OnRemove()
+    {
+        this.gameObject.scene.audioManager.RemoveAudioPlayer(this);
+    }
+
+    get volume()
+    {
+        return this._volume;
+    }
+
+    set volume(_value)
+    {
+        this._volume = _value;
+    }
+
+    get muted()
+    {
+        return this._muteValue == 0;
+    }
+
+    set muted(_value)
+    {
+        if (_value)
+        {
+            this._muteValue = 0;
         }
 
-        this._audio.autoplay = false;
-        this._audio.play();
+        else
+        {
+            this._muteValue = 1;
+        }
+    }
+
+    get playing()
+    {
+        return this._playing;
+    }
+
+    Internal_SetVolume()
+    {
+        this._gain.gain.value = this._volume * this.mixer.volume * this._muteValue;
+    }
+
+    Internal_CreateSource()
+    {
+        if (this._src != null)
+        {
+            try 
+            {
+                this._src.stop();
+            }
+
+            catch {  }
+        }
+
+        this._src = this._ctx.createBufferSource();
+
+        this._src.buffer = this._buffer;
+        this._src.loop = this.loop;
+
+        this._src.connect(this._gain);
+
+        this._src.onended = () =>
+        {
+            if (!this.loop)
+            {
+                this._playing = false;
+                this._pauseTime = 0;
+            }
+
+            if (this.onEnded != null)
+            {
+                this.onEnded();
+            }
+        };
+    }
+
+    async Play()
+    {
+        await this.LoadAudio();
+
+        if (this._ctx.state == "suspended")
+        {
+            await this._ctx.resume();
+        }
+
+        this.Internal_SetVolume();
+
+        if (this._playing) { return; }
+
+        this.Internal_CreateSource();
+
+        this._startTime = this._ctx.currentTime - this._pauseTime;
+
+        this._src.start(0, this._pauseTime);
+        this._playing = true;
     }
 
     Pause()
     {
-        this._audio.pause();
+        if (!this._playing || this._src == null) { return; }
+
+        this._pauseTime = this._ctx.currentTime - this._startTime;
+
+        try 
+        {
+            this._src.stop();
+        }
+
+        catch {  }
+
+        this._src = null;
+        this._playing = false;
     }
 
     Stop()
     {
-        this.Pause();
-        this._audio.currentTime = 0;
+        if (this._src != null)
+        {
+            try 
+            {
+                this._src.stop();
+                this._src = null;
+            }
+
+            catch {  }
+        }
+
+        this._pauseTime = 0;
+        this._playing = false;
+    }
+
+    SetFile(_newFile)
+    {
+        this._file = _newFile;
+        this._buffer = null;
+        
+        this.Stop();
     }
 }
 
@@ -851,6 +1135,8 @@ export class Animator extends Component
         this._currentFrame = 0;
         this._timer = 0;
         this._playing = false;
+
+        this._frames = [];
         
         this.loop = loop;
         this.autoplay = autoplay;
@@ -864,6 +1150,11 @@ export class Animator extends Component
         {
             this.Play();
         }
+    }
+
+    OnEnable()
+    {
+        this.SetTexture(this.spriteRenderer.sprite.texture, this.frameCount);
     }
 
     Update()
@@ -944,6 +1235,8 @@ export class Animator extends Component
     {
         this._currentFrame = _frame;
 
+        if (this._frames.length == 0) { return; }
+
         this.Internal_RunFrameWithLoopCheck();
     }
 
@@ -951,6 +1244,12 @@ export class Animator extends Component
     {
         this.spriteRenderer.sprite.texture = _texture;
         this.frameCount = _frameCount;
+
+        if (!_texture.complete)
+        {
+            _texture.addEventListener("load", () => { this.SetTexture(_texture, _frameCount); }, { once: true });
+            return;
+        }
 
         this._frames = [];
 
@@ -989,21 +1288,13 @@ export class TilemapRenderer extends SpriteRenderer
     {
         let _xmlHTTP = new XMLHttpRequest();
 
-        _xmlHTTP.onreadystatechange = function()
-        {   
-            if (_xmlHTTP.readyState == 4 && _xmlHTTP.status == 200)
-            {
-                return JSON.parse(_xmlHTTP.responseText);
-            }
-        }
-
         _xmlHTTP.open("GET", this._dataPath, false);
         _xmlHTTP.send();
 
         return JSON.parse(_xmlHTTP.response);
     }
 
-    GenerateTiles()
+    Internal_GenerateTiles()
     {
         let _tmp = [];
 
@@ -1023,6 +1314,18 @@ export class TilemapRenderer extends SpriteRenderer
         }
 
         return _tmp;
+    }
+
+    Internal_TryGenerateTiles()
+    {
+        if (!this.sprite.texture.complete)
+        {
+            this.sprite.texture.addEventListener("load", () => { this._tiles = this.Internal_GenerateTiles(); }, { once: true });
+
+            return;
+        }
+
+        this._tiles = this.Internal_GenerateTiles();
     }
 
     get data()
@@ -1048,7 +1351,8 @@ export class TilemapRenderer extends SpriteRenderer
         }
 
         this._data = this.GetData();
-        this._tiles = this.GenerateTiles();
+        
+        this.Internal_TryGenerateTiles();
     }
     
     get sprite()
@@ -1066,6 +1370,11 @@ export class TilemapRenderer extends SpriteRenderer
         else
         {
             this._sprite = new Sprite(Engine.I.missingTilemap);
+        }
+
+        if (this._data)
+        {
+            this.Internal_TryGenerateTiles();
         }
     }
 }
@@ -1423,7 +1732,7 @@ export class InputManager extends Component
 
 export class UIElement extends CursorBoxCollider
 {
-    constructor(gameObject, canvas, animator, text=new TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, interactable=true)
+    constructor(gameObject, canvas, animator, text=new TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=[], interactable=true)
     {
         super(gameObject, width, height);
 
@@ -1431,6 +1740,20 @@ export class UIElement extends CursorBoxCollider
         this.animator = animator;
 
         this.text = text;
+
+        if (sfx.length > 0)
+        {
+            this._sfx = sfx;
+
+            this.sfxPlayer = gameObject.AddComponent(AudioPlayer, this._sfx[0], Engine.I.sfxMixer, undefined, undefined, true);
+        }
+
+        else
+        {
+            this._sfx = [];
+
+            this.sfxPlayer = null;
+        }
 
         this.interactable = interactable;
 
@@ -1485,6 +1808,13 @@ export class UIElement extends CursorBoxCollider
     {
         if (!this._interactable) { return; }
 
+        if (this.sfxPlayer != null)
+        {
+            this.sfxPlayer.SetFile(this._sfx[0]);
+
+            this.sfxPlayer.Play();
+        }
+
         this.animator.JumpToFrame(1);
 
         this.OnUIHoverStart();
@@ -1494,6 +1824,13 @@ export class UIElement extends CursorBoxCollider
     {
         if (!this._interactable) { return; }
 
+        if (this.sfxPlayer != null)
+        {
+            this.sfxPlayer.SetFile(this._sfx[1]);
+
+            this.sfxPlayer.Play();
+        }
+
         this.animator.JumpToFrame(2);
 
         this.OnUIClickStart();
@@ -1502,6 +1839,13 @@ export class UIElement extends CursorBoxCollider
     Base_OnUIClickEnd()
     {
         if (!this._interactable) { return; }
+
+        if (this.sfxPlayer != null)
+        {
+            this.sfxPlayer.SetFile(this._sfx[2]);
+
+            this.sfxPlayer.Play();
+        }
 
         this.animator.JumpToFrame(1);
 
@@ -1602,6 +1946,31 @@ export class UICanvas extends Component
         this._indexChangeCooldown = 0.25;
     }
 
+    Start()
+    {
+        if (!this._bound)
+        {
+            this._currentElement = null;
+            this.Internal_CheckInputMode();
+            this._bound = true;
+        }
+    }
+
+    OnEnable()
+    {
+        if (!this._bound)
+        {
+            this._currentElement = null;
+            this.Internal_CheckInputMode();
+            this._bound = true;
+        }
+    }
+
+    OnDisable()
+    {
+        this.Internal_RemoveListeners();
+    }
+
     Update()
     {
         this.Internal_CheckInputMode();
@@ -1696,7 +2065,7 @@ export class UICanvas extends Component
     {
         const _nextElement = this.Internal_FindNextInteractable(this._currentElement, 1);
 
-        if (_nextElement == null) { return; }
+        if (_nextElement == null || _nextElement == this._currentElement) { return; }
 
         this._currentElement.Base_OnUIHoverEnd();
 
@@ -1709,7 +2078,7 @@ export class UICanvas extends Component
     {
         const _nextElement = this.Internal_FindNextInteractable(this._currentElement, -1);
 
-        if (_nextElement == null) { return; }
+        if (_nextElement == null || _nextElement == this._currentElement) { return; }
 
         this._currentElement.Base_OnUIHoverEnd();
 
@@ -1735,12 +2104,16 @@ export class UICanvas extends Component
             {
                 this.Internal_IncrementElementIndex();
 
+                this._indexChangeTimer = this._indexChangeCooldown;
+
                 break;
             }
 
             case ("DPadDown"):
             {
                 this.Internal_DecrementElementIndex();
+
+                this._indexChangeTimer = this._indexChangeCooldown;
 
                 break;
             }
@@ -1848,6 +2221,7 @@ export class Scene
     {
         this.cursorManager = this.root.AddComponent(CursorManager);
         this.inputManager = this.root.AddComponent(InputManager);
+        this.audioManager = this.root.AddComponent(AudioManager);
 
         this.Start();
     }
@@ -1942,6 +2316,12 @@ export class Engine
 
         this.missingTilemap = new Image();
         this.missingTilemap.src = "source/engine/textures/missingTilemap.png";
+
+        this.masterMixer = new AudioMixer();
+
+        this.sfxMixer = new AudioMixer(undefined, undefined, this.masterMixer);
+        this.musicMixer = new AudioMixer(undefined, undefined, this.masterMixer);
+        this.dialogueMixer = new AudioMixer(undefined, undefined, this.masterMixer);
 
         this._deltaTime = 0;
         this._renderQueue = [];
