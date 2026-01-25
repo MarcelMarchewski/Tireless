@@ -2123,24 +2123,48 @@ export class UICanvas extends Component
         return null;
     }
 
-    Internal_IncrementElementIndex()
+    Internal_FindNextByDirection(_directionX, _directionY)
     {
-        const _nextElement = this.Internal_FindNextInteractable(this._currentElement, 1);
+        if (this._currentElement == null || this._elements.length == 0) { return null; }
 
-        if (_nextElement == null || _nextElement == this._currentElement) { return; }
+        let _closest = null;
+        let _closestDistance = Infinity;
 
-        this._currentElement.Base_OnUIHoverEnd();
+        for (let i = 0; i < this._elements.length; i++)
+        {
+            const _candidate = this._elements[i];
 
-        this._currentElement = _nextElement;
+            if (!_candidate.interactable || _candidate == this._currentElement) { continue; }
 
-        this._currentElement.Base_OnUIHoverStart();
+            const _compareX = _candidate.gameObject.transform.position.x - this._currentElement.gameObject.transform.position.x;
+            const _compareY = _candidate.gameObject.transform.position.y - this._currentElement.gameObject.transform.position.y;
+
+            if (_directionX > 0 && _compareX <= 0) { continue; }
+            if (_directionX < 0 && _compareX >= 0) { continue; }
+
+            if (_directionY > 0 && _compareY <= 0) { continue; }
+            if (_directionY < 0 && _compareY >= 0) { continue; }
+
+            const _distance = _compareX * _compareX + _compareY * _compareY;
+
+            if (_distance < _closestDistance)
+            {
+                _closestDistance = _distance;
+
+                _closest = _candidate;
+            }
+        }
+
+        return _closest;
     }
 
-    Internal_DecrementElementIndex()
+    Internal_MoveSelection(_directionX, _directionY)
     {
-        const _nextElement = this.Internal_FindNextInteractable(this._currentElement, -1);
+        if (this._currentElement == null) { return; }
+        
+        const _nextElement = this.Internal_FindNextByDirection(_directionX, _directionY);
 
-        if (_nextElement == null || _nextElement == this._currentElement) { return; }
+        if (_nextElement == null) { return; }
 
         this._currentElement.Base_OnUIHoverEnd();
 
@@ -2164,18 +2188,28 @@ export class UICanvas extends Component
 
             case ("DPadUp"):
             {
-                this.Internal_IncrementElementIndex();
-
-                this._indexChangeTimer = this._indexChangeCooldown;
+                this.Internal_MoveSelection(0, 1);
 
                 break;
             }
 
             case ("DPadDown"):
             {
-                this.Internal_DecrementElementIndex();
+                this.Internal_MoveSelection(0, -1);
 
-                this._indexChangeTimer = this._indexChangeCooldown;
+                break;
+            }
+
+            case ("DPadLeft"):
+            {
+                this.Internal_MoveSelection(-1, 0);
+
+                break;
+            }
+
+            case ("DPadRight"):
+            {
+                this.Internal_MoveSelection(1, 0);
 
                 break;
             }
@@ -2201,17 +2235,44 @@ export class UICanvas extends Component
     {
         if (this._indexChangeTimer > 0) { return; }
 
-        if (_valueY <= -0.5)
-        {
-            this.Internal_IncrementElementIndex();
+        let _moved = false;
 
-            this._indexChangeTimer = this._indexChangeCooldown;
+        if (Math.abs(_valueX) > Math.abs(_valueY))
+        {
+            if (_valueX > 0.5)
+            {
+                this.Internal_MoveSelection(1, 0);
+
+                _moved = true;
+            }
+
+            else if (_valueX < -0.5)
+            {
+                this.Internal_MoveSelection(-1, 0);
+
+                _moved = true;
+            }
         }
 
-        else if (_valueY >= 0.5)
+        else
         {
-            this.Internal_DecrementElementIndex();
+            if (_valueY > 0.5)
+            {
+                this.Internal_MoveSelection(0, -1);
 
+                _moved = true;
+            }
+
+            else if (_valueY < -0.5)
+            {
+                this.Internal_MoveSelection(0, 1);
+
+                _moved = true;
+            }
+        }
+
+        if (_moved)
+        {
             this._indexChangeTimer = this._indexChangeCooldown;
         }
     }
