@@ -819,9 +819,14 @@ export class AudioMixer
 {
     constructor(volume=1, muted=false, parentMixer=null)
     {
+        this._audioPlayers = [];
+        this._childMixers = [];
+
         this.volume = volume;
 
         this.muted = muted;
+
+        this._parentMixer = null;
 
         this.parentMixer = parentMixer;
     }
@@ -852,6 +857,8 @@ export class AudioMixer
     set volume(_value)
     {
         this._volume = _value;
+
+        this.Internal_UpdateVolumes();
     }
 
     get muted()
@@ -870,6 +877,8 @@ export class AudioMixer
         {
             this._muteValue = 1;
         }
+
+        this.Internal_UpdateVolumes();
     }
 
     get parentMixer()
@@ -879,34 +888,48 @@ export class AudioMixer
 
     set parentMixer(_newParentMixer)
     {
+        if (this._parentMixer == _newParentMixer) { return; }
+
+        if (this._parentMixer != null)
+        {
+            this._parentMixer.RemoveChild(this);
+        }
+
         this._parentMixer = _newParentMixer;
-    }
-}
 
-export class AudioManager extends Component
-{
-    constructor(gameObject)
-    {
-        super(gameObject);
+        if (this._parentMixer != null)
+        {
+            this._parentMixer.AddChild(this);
+        }
 
-        this.ctx = new window.AudioContext();
-
-        this._audioPlayers = [];
+        this.Internal_UpdateVolumes();
     }
 
-    get masterVolume()
+    Internal_UpdateVolumes()
     {
-        return Engine.I.masterVolume;
-    }
-
-    set masterVolume(_value)
-    {
-        Engine.I.masterVolume = _value;
-
         for (let i = 0; i < this._audioPlayers.length; i++)
         {
             this._audioPlayers[i].Internal_SetVolume();
         }
+
+        for (let i = 0; i < this._childMixers.length; i++)
+        {
+            this._childMixers[i].Internal_UpdateVolumes();
+        }
+    }
+
+    AddChild(_child)
+    {
+        this._childMixers.push(_child);
+    }
+
+    RemoveChild(_child)
+    {
+        const _childIndex = this._childMixers.indexOf(_child);
+
+        if (_childIndex == -1) { return; }
+
+        this._childMixers.splice(_childIndex, 1);
     }
 
     AddAudioPlayer(_player)
@@ -926,16 +949,16 @@ export class AudioManager extends Component
 
 export class AudioPlayer extends Component
 {
-    constructor(gameObject, file, mixer, volume=1, loop=false, doAutoCatchup=false)
+    constructor(gameObject, file, mixer=null, volume=1, loop=false, doAutoCatchup=false)
     {
         super(gameObject);
 
-        this.volume = volume;
-        this.loop = loop;
-        
-        this.mixer = mixer;
+        this._ctx = Engine.I.audioCtx;
 
-        this.muted = false;
+        this._gain = this._ctx.createGain();
+        this._gain.connect(this._ctx.destination);
+
+        this.LoadAudio = this.LoadAudio.bind(this);
 
         this.onEnded = null;
 
@@ -945,16 +968,47 @@ export class AudioPlayer extends Component
         this._buffer = null;
         this._src = null;
         this._playing = false;
+
+        this._disablePause = false;
         
         this._startTime = 0;
         this._pauseTime = 0;
 
-        this._ctx = this.gameObject.scene.audioManager.ctx;
+        this._volume = volume;
+        this._muteValue = 1;
 
-        this._gain = this._ctx.createGain();
-        this._gain.connect(this._ctx.destination);
+        this.mixer = mixer;
+        this.muted = false;
+        this.volume = volume;
+        this.loop = loop;
+    }
 
-        this.LoadAudio = this.LoadAudio.bind(this);
+    OnEnable()
+    {
+        if (this._disablePause)
+        {
+            this.Play();
+
+            this._disablePause = false;
+        }
+    }
+
+    OnDisable()
+    {
+        if (this._playing)
+        {
+            this.Pause();
+
+            this._disablePause = true;
+        }
+    }
+
+    OnRemove()
+    {
+        if (this._playing)
+        {
+            this.Stop();
+        }
     }
 
     async LoadAudio()
@@ -965,26 +1019,6 @@ export class AudioPlayer extends Component
         this._buffer = await this._ctx.decodeAudioData(_arrayBuffer);
     }
 
-    Start()
-    {
-        this.gameObject.scene.audioManager.AddAudioPlayer(this);
-    }
-
-    OnEnable()
-    {
-        this.gameObject.scene.audioManager.AddAudioPlayer(this);
-    }
-
-    OnDisable()
-    {
-        this.gameObject.scene.audioManager.RemoveAudioPlayer(this);
-    }
-
-    OnRemove()
-    {
-        this.gameObject.scene.audioManager.RemoveAudioPlayer(this);
-    }
-
     get volume()
     {
         return this._volume;
@@ -993,6 +1027,8 @@ export class AudioPlayer extends Component
     set volume(_value)
     {
         this._volume = _value;
+
+        this.Internal_SetVolume();
     }
 
     get muted()
@@ -1011,6 +1047,32 @@ export class AudioPlayer extends Component
         {
             this._muteValue = 1;
         }
+
+        this.Internal_SetVolume();
+    }
+
+    get mixer()
+    {
+        return this._mixer;
+    }
+
+    set mixer(_newMixer)
+    {
+        if (_newMixer == null)
+        {
+            _newMixer = Engine.I.masterMixer;
+        }
+
+        if (this._mixer != null)
+        {
+            this._mixer.RemoveAudioPlayer(this);
+        }
+
+        this._mixer = _newMixer;
+
+        this._mixer.AddAudioPlayer(this);
+
+        this.Internal_SetVolume();
     }
 
     get playing()
@@ -1020,7 +1082,7 @@ export class AudioPlayer extends Component
 
     Internal_SetVolume()
     {
-        this._gain.gain.value = this._volume * this.mixer.volume * this._muteValue;
+        this._gain.gain.value = this._volume * this._mixer.volume * this._muteValue;
     }
 
     Internal_CreateSource()
@@ -2221,7 +2283,6 @@ export class Scene
     {
         this.cursorManager = this.root.AddComponent(CursorManager);
         this.inputManager = this.root.AddComponent(InputManager);
-        this.audioManager = this.root.AddComponent(AudioManager);
 
         this.Start();
     }
@@ -2316,6 +2377,8 @@ export class Engine
 
         this.missingTilemap = new Image();
         this.missingTilemap.src = "source/engine/textures/missingTilemap.png";
+
+        this.audioCtx = new window.AudioContext();
 
         this.masterMixer = new AudioMixer();
 

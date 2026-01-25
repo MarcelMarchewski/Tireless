@@ -18,3 +18,9 @@
     -ms-transform: translate(-50%, -50%);
     transform: translate(-50%, -50%);
 }
+
+body
+{
+    background-image: linear-gradient(to top, #010318, #403f85, #98498e, #da5c82, #ff856c);
+    min-height: 100vh;
+}

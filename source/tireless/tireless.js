@@ -2,7 +2,7 @@ import * as Rebound from "/source/engine/rebound.js";
 
 class EntityToggleButton extends Rebound.UIElement
 {
-    constructor(gameObject, canvas, animator, text=new Rebound.TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", Rebound.Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=null, interactable=true)
+    constructor(gameObject, canvas, animator, text=new Rebound.TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", Rebound.Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
     {   
         super(gameObject, canvas, animator, text, width, height, sfx, interactable);
 
@@ -18,6 +18,117 @@ class EntityToggleButton extends Rebound.UIElement
     }
 }
 
+class AudioVolumeButton extends Rebound.UIElement
+{
+    constructor(gameObject, canvas, animator, mixer, valueChange=0.1, text=undefined, width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
+    {
+        super(gameObject, canvas, animator, text, width, height, sfx, interactable);
+
+        this.text.text = "";
+
+        this.mixer = mixer;
+        this.valueChange = valueChange;
+
+        this.targets = [];
+    }
+
+    OnUIClickEnd()
+    {
+        this.mixer.volume += this.valueChange;
+
+        if (this.mixer.volume > 1)
+        {
+            this.mixer.volume = 1;
+        }
+
+        else if (this.mixer.volume < 0)
+        {
+            this.mixer.volume = 0;
+        }
+
+        for (let i = 0; i < this.targets.length; i++)
+        {
+            this.targets[i].OnMixerValueChange(this.mixer);
+        }
+    }
+}
+
+class AudioIconAnimator extends Rebound.Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+    }
+
+    OnMixerValueChange(_mixer)
+    {
+        if (_mixer.muted)
+        {
+            this.gameObject.animator.JumpToFrame(4);
+            return;
+        }
+
+        if (_mixer.localVolumePure >= 0.9)
+        {
+            this.gameObject.animator.JumpToFrame(0);
+        }
+
+        else if (_mixer.localVolumePure >= 0.6)
+        {
+            this.gameObject.animator.JumpToFrame(1);
+        }
+
+        else if (_mixer.localVolumePure >= 0.3)
+        {
+            this.gameObject.animator.JumpToFrame(2);
+        }
+
+        else
+        {
+            this.gameObject.animator.JumpToFrame(3);
+        }
+    }
+}
+
+class AudioPlusButton extends Rebound.GameObject
+{
+    constructor(scene, mixer, name="Audio Plus Button", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.renderer = this.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(this.scene.plusButtonTexture, Rebound.Engine.I.UI_DEFAULT_LAYER, undefined, new Rebound.Vector2(32, 32)));
+        this.animator = this.AddComponent(Rebound.Animator, this.renderer, 4, 0, false, false);
+
+        this.volumeButton = this.AddComponent(AudioVolumeButton, this.transform.parent.gameObject.GetComponent(Rebound.UICanvas), this.animator, mixer, 0.1);
+    }
+}
+
+class AudioMinusButton extends Rebound.GameObject
+{
+    constructor(scene, mixer, name="Audio Minus Button", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.renderer = this.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(this.scene.minusButtonTexture, Rebound.Engine.I.UI_DEFAULT_LAYER, undefined, new Rebound.Vector2(32, 32)));
+        this.animator = this.AddComponent(Rebound.Animator, this.renderer, 4, 0, false, false);
+
+        this.volumeButton = this.AddComponent(AudioVolumeButton, this.transform.parent.gameObject.GetComponent(Rebound.UICanvas), this.animator, mixer, -0.1);
+    }
+}
+
+class AudioIcon extends Rebound.GameObject
+{
+    constructor(scene, name="Audio Icon", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.renderer = this.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(this.scene.audioIconTexture, Rebound.Engine.I.UI_DEFAULT_LAYER, undefined, new Rebound.Vector2(32, 32)));
+        this.animator = this.AddComponent(Rebound.Animator, this.renderer, 5, 0, false, false);
+
+        this.iconAnimator = this.AddComponent(AudioIconAnimator);
+    }
+}
+
 class SettingsMenuCanvas extends Rebound.GameObject
 {
     constructor(scene, name="Settings Menu Canvas", parent=null)
@@ -27,6 +138,19 @@ class SettingsMenuCanvas extends Rebound.GameObject
         this.canvas = this.AddComponent(Rebound.UICanvas);
 
         this.backButton = new NextCanvasButton(this.scene, this, new Rebound.Vector2(128, 102), "Back Button", "BACK", this.transform);
+
+        this.musicIcon = new AudioIcon(this.scene, undefined, this.transform);
+        this.musicIcon.transform.localPosition = new Rebound.Vector2(96, 142);
+
+        this.musicPlusButton = new AudioPlusButton(this.scene, Rebound.Engine.I.musicMixer, undefined, this.transform);
+        this.musicPlusButton.transform.localPosition = new Rebound.Vector2(128, 142);
+
+        this.musicPlusButton.volumeButton.targets = [this.musicIcon.iconAnimator];
+
+        this.musicMinusButton = new AudioMinusButton(this.scene, Rebound.Engine.I.musicMixer, undefined, this.transform);
+        this.musicMinusButton.transform.localPosition = new Rebound.Vector2(160, 142);
+
+        this.musicMinusButton.volumeButton.targets = [this.musicIcon.iconAnimator];
     }
 }
 
@@ -55,7 +179,7 @@ class NextCanvasButton extends Rebound.GameObject
         this.renderer = this.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(this.scene.uiButtonTexture, Rebound.Engine.I.UI_DEFAULT_LAYER, undefined, new Rebound.Vector2(64, 32)));
         this.animator = this.AddComponent(Rebound.Animator, this.renderer, 4, 0, false, false);
         
-        this.toggle = this.AddComponent(EntityToggleButton, currentCanvasObject.GetComponent(Rebound.UICanvas), this.animator, new Rebound.TextData(this, text, "8px VCR_OSD_MONO", "white", Rebound.Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32, ["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"]);
+        this.toggle = this.AddComponent(EntityToggleButton, currentCanvasObject.GetComponent(Rebound.UICanvas), this.animator, new Rebound.TextData(this, text, "8px VCR_OSD_MONO", "white", Rebound.Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
     }
 }
 
@@ -73,6 +197,15 @@ class MainMenu extends Rebound.Scene
 
         this.uiButtonTexture = new Image();
         this.uiButtonTexture.src = "source/tireless/resources/textures/UI/tirelessButtonPrefab.png";
+
+        this.audioIconTexture = new Image();
+        this.audioIconTexture.src = "source/tireless/resources/textures/UI/tirelessAudioIcon.png";
+
+        this.plusButtonTexture = new Image();
+        this.plusButtonTexture.src = "source/tireless/resources/textures/UI/tirelessPlusButton.png";
+
+        this.minusButtonTexture = new Image();
+        this.minusButtonTexture.src = "source/tireless/resources/textures/UI/tirelessMinusButton.png";
     }
 
     SetupButtonTargets()
