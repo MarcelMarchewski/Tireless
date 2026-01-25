@@ -32,6 +32,26 @@ class AudioVolumeButton extends Rebound.UIElement
         this.targets = [];
     }
 
+    Start()
+    {
+        super.Start();
+
+        for (let i = 0; i < this.targets.length; i++)
+        {
+            this.targets[i].OnMixerValueChange(this.mixer);
+        }
+    }
+
+    OnEnable()
+    {
+        super.OnEnable();
+
+        for (let i = 0; i < this.targets.length; i++)
+        {
+            this.targets[i].OnMixerValueChange(this.mixer);
+        }
+    }
+
     OnUIClickEnd()
     {
         this.mixer.volume += this.valueChange;
@@ -64,28 +84,38 @@ class AudioIconAnimator extends Rebound.Component
     {
         if (_mixer.muted)
         {
-            this.gameObject.animator.JumpToFrame(4);
+            this.gameObject.animator.JumpToFrame(6);
             return;
         }
 
-        if (_mixer.localVolumePure >= 0.9)
+        if (_mixer.localVolumePure >= 1)
         {
             this.gameObject.animator.JumpToFrame(0);
         }
 
-        else if (_mixer.localVolumePure >= 0.6)
+        else if (_mixer.localVolumePure >= 0.8)
         {
             this.gameObject.animator.JumpToFrame(1);
         }
 
-        else if (_mixer.localVolumePure >= 0.3)
+        else if (_mixer.localVolumePure >= 0.5)
         {
             this.gameObject.animator.JumpToFrame(2);
         }
 
-        else
+        else if (_mixer.localVolumePure >= 0.3)
         {
             this.gameObject.animator.JumpToFrame(3);
+        }
+
+        else if (_mixer.localVolumePure >= 0.1)
+        {
+            this.gameObject.animator.JumpToFrame(4);
+        }   
+
+        else
+        {
+            this.gameObject.animator.JumpToFrame(5);
         }
     }
 }
@@ -123,7 +153,7 @@ class AudioIcon extends Rebound.GameObject
         super(scene, name, parent);
 
         this.renderer = this.AddComponent(Rebound.SpriteRenderer, new Rebound.Sprite(this.scene.audioIconTexture, Rebound.Engine.I.UI_DEFAULT_LAYER, undefined, new Rebound.Vector2(32, 32)));
-        this.animator = this.AddComponent(Rebound.Animator, this.renderer, 5, 0, false, false);
+        this.animator = this.AddComponent(Rebound.Animator, this.renderer, 7, 0, false, false);
 
         this.iconAnimator = this.AddComponent(AudioIconAnimator);
     }
@@ -253,7 +283,7 @@ _playButton.onclick = () =>
 {
     const _s = new MainMenu();
 
-    new Rebound.Engine(256, 240, new Rebound.Vector2(4, 4));
+    new Rebound.Engine(256, 240, new Rebound.Vector2(4, 4), false, "10px solid white");
 
     Rebound.Engine.I.AddToScenes(_s);
 

@@ -21,6 +21,7 @@
 
 body
 {
-    background-image: linear-gradient(to top, #010318, #403f85, #98498e, #da5c82, #ff856c);
-    min-height: 100vh;
+    background-image: url("tirelessSiteBackground.png");
+    background-size: 100vh;
+    background-repeat: repeat-x;
 }
