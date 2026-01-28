@@ -817,14 +817,16 @@ export class SpriteRenderer extends Component
 
 export class AudioMixer
 {
-    constructor(volume=1, muted=false, parentMixer=null)
+    constructor(name, volume=1, muted=false, parentMixer=null)
     {
+        this.name = name;
+
         this._audioPlayers = [];
         this._childMixers = [];
 
-        this.volume = volume;
+        this.volumeInitial = volume;
 
-        this.muted = muted;
+        this.mutedInitial = muted;
 
         this._parentMixer = null;
 
@@ -858,7 +860,25 @@ export class AudioMixer
     {
         this._volume = _value;
 
+        localStorage.setItem(this.name + "LocalVolumePure", this.localVolumePure);
+
         this.Internal_UpdateVolumes();
+    }
+
+    set volumeInitial(_value)
+    {
+        const _storedVolume = localStorage.getItem(this.name + "LocalVolumePure");
+
+        if (_storedVolume == null)
+        {
+            this.volume = _value;
+            localStorage.setItem(this.name + "LocalVolumePure", this.localVolumePure);
+        }
+
+        else
+        {
+            this.volume = Number(localStorage.getItem(this.name + "LocalVolumePure"));
+        }
     }
 
     get muted()
@@ -870,15 +890,33 @@ export class AudioMixer
     {
         if (_value)
         {
-            this._muteValue = 0;
+            this._muteValue = 1;
         }
 
         else
         {
-            this._muteValue = 1;
+            this._muteValue = 0;
         }
 
+        localStorage.setItem(this.name + "Muted", this.muted);
+
         this.Internal_UpdateVolumes();
+    }
+
+    set mutedInitial(_value)
+    {
+        const _storedMuted = localStorage.getItem(this.name + "Muted");
+
+        if (_storedMuted == null)
+        {
+            this.muted = _value;
+            localStorage.setItem(this.name + "Muted", this.muted);
+        }
+
+        else
+        {
+            this.muted = (localStorage.getItem(this.name + "Muted") == "false");
+        }
     }
 
     get parentMixer()
@@ -2441,11 +2479,11 @@ export class Engine
 
         this.audioCtx = new window.AudioContext();
 
-        this.masterMixer = new AudioMixer();
+        this.masterMixer = new AudioMixer("masterAudioMixer");
 
-        this.sfxMixer = new AudioMixer(undefined, undefined, this.masterMixer);
-        this.musicMixer = new AudioMixer(undefined, undefined, this.masterMixer);
-        this.dialogueMixer = new AudioMixer(undefined, undefined, this.masterMixer);
+        this.sfxMixer = new AudioMixer("sfxAudioMixer", undefined, undefined, this.masterMixer);
+        this.musicMixer = new AudioMixer("musicAudioMixer", undefined, undefined, this.masterMixer);
+        this.dialogueMixer = new AudioMixer("dialogueAudioMixer", undefined, undefined, this.masterMixer);
 
         this._deltaTime = 0;
         this._renderQueue = [];
