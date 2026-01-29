@@ -824,9 +824,9 @@ export class AudioMixer
         this._audioPlayers = [];
         this._childMixers = [];
 
-        this.volumeInitial = volume;
-
         this.mutedInitial = muted;
+
+        this.volumeInitial = volume;
 
         this._parentMixer = null;
 
@@ -847,7 +847,7 @@ export class AudioMixer
     {
         if (this._parentMixer != null)
         {
-            return this._volume * this._parentMixer.volume * this._muteValue;
+            return this.localVolume * this._parentMixer.volume;
         }
 
         else
@@ -872,7 +872,6 @@ export class AudioMixer
         if (_storedVolume == null)
         {
             this.volume = _value;
-            localStorage.setItem(this.name + "LocalVolumePure", this.localVolumePure);
         }
 
         else
@@ -890,12 +889,12 @@ export class AudioMixer
     {
         if (_value)
         {
-            this._muteValue = 1;
+            this._muteValue = 0;
         }
 
         else
         {
-            this._muteValue = 0;
+            this._muteValue = 1;
         }
 
         localStorage.setItem(this.name + "Muted", this.muted);
@@ -910,12 +909,11 @@ export class AudioMixer
         if (_storedMuted == null)
         {
             this.muted = _value;
-            localStorage.setItem(this.name + "Muted", this.muted);
         }
 
         else
         {
-            this.muted = (localStorage.getItem(this.name + "Muted") == "false");
+            this.muted = (localStorage.getItem(this.name + "Muted") == "true");
         }
     }
 
@@ -2482,7 +2480,7 @@ export class Engine
         this.masterMixer = new AudioMixer("masterAudioMixer");
 
         this.sfxMixer = new AudioMixer("sfxAudioMixer", undefined, undefined, this.masterMixer);
-        this.musicMixer = new AudioMixer("musicAudioMixer", undefined, undefined, this.masterMixer);
+        this.musicMixer = new AudioMixer("musicAudioMixer", 0.7, undefined, this.masterMixer);
         this.dialogueMixer = new AudioMixer("dialogueAudioMixer", undefined, undefined, this.masterMixer);
 
         this._deltaTime = 0;

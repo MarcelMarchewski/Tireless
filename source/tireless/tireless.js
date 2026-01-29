@@ -262,8 +262,6 @@ class MainMenu extends Rebound.Scene
 
         this.SetupButtonTargets();
 
-        Rebound.Engine.I.musicMixer.volumeInitial = 0.7;
-
         this.musicPlayer = new Rebound.GameObject(this, "Music Player").AddComponent(Rebound.AudioPlayer, "source/tireless/resources/audio/MainMenu/Tireless_MenuTheme_IntroStem.wav", Rebound.Engine.I.musicMixer, 1, false, true);
 
         this.musicPlayer.onEnded = () => 
