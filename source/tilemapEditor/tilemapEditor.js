@@ -454,6 +454,17 @@ class TilemapEditor extends Rebound.Scene
 
     Start()
     {
+        this.background = new Rebound.GameObject(this, "Background");
+        this.background.transform.localPosition = new Rebound.Vector2(128, 184);
+        this.background.transform.localScale = new Rebound.Vector2(256, 386);
+
+        this.backgroundTex = new Image();
+        this.backgroundTex.src = "source/tilemapEditor/textures/editor/tilemapEditorBackground.png";
+
+        this.backgroundSprite = new Rebound.Sprite(this.backgroundTex);
+
+        this.backgroundRenderer = this.background.AddComponent(Rebound.SpriteRenderer, this.backgroundSprite);
+
         this.resolutionManager = new Rebound.GameObject(this, "ResolutionManager");
 
         this.resolutionManager.transform.localPosition = new Rebound.Vector2(20, 348);
@@ -529,6 +540,6 @@ class TilemapViewer extends Rebound.Scene
 
 const _e = new Rebound.Engine(256, 368, new Rebound.Vector2(2, 2));
 
-const _s = new TilemapEditor();
+const _s = new TilemapViewer();
 
 Rebound.Engine.I.AddToScenes(_s);

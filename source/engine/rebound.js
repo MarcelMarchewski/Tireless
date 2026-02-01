@@ -14,6 +14,13 @@ export class Vector2
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }
 
+    get normalised()
+    {
+        if (this.magnitude == 0) { return Vector2.zero; }
+
+        return new Vector2(this.x / this.magnitude, this.y / this.magnitude);
+    }
+
     Add(_other)
     {
         this.x += _other.x;
@@ -36,6 +43,14 @@ export class Vector2
     {
         this.x /= _other.x;
         this.y /= _other.y;
+    }
+
+    Normalise()
+    {
+        if (this.magnitude == 0) { return; }
+
+        this.x /= this.magnitude;
+        this.y /= this.magnitude;
     }
 
     static get negativeOne()
@@ -133,6 +148,12 @@ export class Transform
         if (this._parent != null)
         {
             this._parent.Internal_RemoveChild(this);
+        }
+
+        if (_newParent == null)
+        {
+            this._parent = null;
+            return;
         }
 
         const _worldPosition = this.position;
@@ -287,10 +308,22 @@ export class Entity
     {
         this._enabled = true;
         this._parentEnabled = true;
+
+        this._destroyed = false;
+    }
+
+    Base_Destroy()
+    {
+        if (this._destroyed) { return; }
+
+        this.Destroy();
+        
+        this._destroyed = true;
     }
 
     OnEnable() {  }
     OnDisable() {  }
+    Destroy() {  }
 
     get enabled()
     {
@@ -367,35 +400,6 @@ export class GameObject extends Entity
         return _comp;
     }
 
-    RemoveComponent(_componentType)
-    {
-        const _compIndex = this._components.findIndex((_comp) => _comp instanceof _componentType);
-
-        if (_compIndex == -1) { return; }
-
-        const _comp = this._components[_compIndex];
-
-        this._components.splice(_compIndex, 1);
-
-        _comp.Base_OnRemove();
-    }
-
-    RemoveComponents(_componentType)
-    {
-        const _comps = this.GetComponents(_componentType);
-
-        for (let i = 0; i < _comps.length; i++)
-        {
-            const _index = this._components.indexOf(_comps[i]);
-
-            if (_index != -1)
-            {
-                this._components.splice(_index, 1);
-                _comps[i].Base_OnRemove();
-            }
-        }
-    }
-
     GetComponent(_componentType)
     {
         return this._components.find((_comp) => _comp instanceof _componentType);
@@ -404,6 +408,23 @@ export class GameObject extends Entity
     GetComponents(_componentType)
     {
         return this._components.filter((_comp) => _comp instanceof _componentType);
+    }
+
+    Destroy()
+    {
+        for (let i = 0; i < this.transform.childCount; i++)
+        {
+            this.transform.GetChild(i).gameObject.Base_Destroy();
+            i--;
+        }
+
+        for (let i = 0; i < this.componentCount; i++)
+        {
+            this._components[i].Base_Destroy();
+            i--;
+        }
+
+        this.transform.parent = null;
     }
 
     Base_Update()
@@ -464,6 +485,15 @@ export class GameObject extends Entity
             this.Internal_TraverseAndSetEnableState(_target.GetChild(i));
         }
     }
+
+    Internal_RemoveComponent(_targetComponent)
+    {
+        const _compIndex = this._components.indexOf(_targetComponent);
+
+        if (_compIndex == -1) { return; }
+
+        this._components.splice(_compIndex, 1);
+    }
 }
 
 export class Component extends Entity
@@ -495,16 +525,20 @@ export class Component extends Entity
         }
     }
 
-    Base_OnRemove()
+    Destroy()
     {
-        this.OnRemove();
+        if (this._destroyed) { return; }
+
+        this.gameObject.Internal_RemoveComponent(this);
+
+        this.OnDestroy();
     }
 
     Start() {  }
 
     Update() {  }
 
-    OnRemove() {  }
+    OnDestroy() {  }
 }
 
 export class CursorManager extends Component
@@ -550,7 +584,7 @@ export class CursorManager extends Component
         Engine.I.c.removeEventListener('mousemove', this.Internal_SetCursorPosition);
     }
 
-    OnRemove()
+    OnDestroy()
     {
         Engine.I.c.removeEventListener('mousemove', this.Internal_SetCursorPosition);
     }
@@ -598,7 +632,7 @@ export class CursorBoxCollider extends Component
         this._isColliding = false;
     }
 
-    OnRemove()
+    OnDestroy()
     {
         this.Internal_RemoveListeners();
         this._isColliding = false;
@@ -792,6 +826,11 @@ export class SpriteRenderer extends Component
     }
 
     OnDisable()
+    {
+        this.Deque();
+    }
+
+    OnDestroy()
     {
         this.Deque();
     }
@@ -1041,12 +1080,14 @@ export class AudioPlayer extends Component
         }
     }
 
-    OnRemove()
+    OnDestroy()
     {
         if (this._playing)
         {
             this.Stop();
         }
+
+        this.mixer.RemoveAudioPlayer(this);
     }
 
     async LoadAudio()
@@ -1159,7 +1200,10 @@ export class AudioPlayer extends Component
 
     async Play()
     {
-        await this.LoadAudio();
+        if (!this._buffer)
+        {
+            await this.LoadAudio();
+        }
 
         if (this._ctx.state == "suspended")
         {
@@ -1532,7 +1576,7 @@ export class InputManager extends Component
         this.OnGamepadConnected = this.OnGamepadConnected.bind(this);
         this.OnGamepadDisconnected = this.OnGamepadDisconnected.bind(this);
 
-        this.STICK_THRESHOLD = 0.05;
+        this.STICK_THRESHOLD = 0.01;
 
         this._kdListeners = [];
         this._kuListeners = [];
@@ -1649,7 +1693,7 @@ export class InputManager extends Component
         }
     }
 
-    OnRemove()
+    OnDestroy()
     {
         if (this._bound)
         {
@@ -1894,8 +1938,10 @@ export class UIElement extends CursorBoxCollider
         }
     }
 
-    OnRemove()
+    OnDestroy()
     {
+        super.OnDestroy();
+
         if (this._bound)
         {
             this.canvas.RemoveElement(this);
@@ -2067,6 +2113,11 @@ export class UICanvas extends Component
     }
 
     OnDisable()
+    {
+        this.Internal_RemoveListeners();
+    }
+
+    OnDestroy()
     {
         this.Internal_RemoveListeners();
     }
@@ -2390,7 +2441,7 @@ export class Scene
 
     Internal_TraverseAndUpdate(_target=this.root.transform)
     {
-        if (!_target.gameObject.enabled || !_target.gameObject.parentEnabled)
+        if (!_target.gameObject.enabled || !_target.gameObject.parentEnabled || _target.gameObject._destroyed)
         {
             return;
         }
@@ -2485,9 +2536,14 @@ export class Engine
         this.musicMixer = new AudioMixer("musicAudioMixer", undefined, undefined, this.masterMixer);
         this.dialogueMixer = new AudioMixer("dialogueAudioMixer", undefined, undefined, this.masterMixer);
 
+        this.persistentScene = new Scene();
+        this.currentScene = null;
+
         this._deltaTime = 0;
         this._renderQueue = [];
         this._scenes = [];
+
+        this._scenes.push(this.persistentScene);
 
         this.Internal_Start();
 
@@ -2545,7 +2601,7 @@ export class Engine
             {
                 const _renderer = this._renderQueue[i];
 
-                if (!_renderer.sprite.texture.complete) { continue; }
+                if (!_renderer.sprite.texture.complete || !_renderer.tiles) { continue; }
 
                 this.ctx.save();
 
@@ -2689,6 +2745,23 @@ export class Engine
         return this._deltaTime;
     }
 
+    MoveToScene(_gameObject, _scene)
+    {
+        const RecursiveUpdateScene = (_target) =>
+        {
+            _target.gameObject.scene = _scene;
+
+            for (let i = 0; i < _target.childCount; i++)
+            {
+                RecursiveUpdateScene(_target.GetChild(i));
+            }
+        }
+
+        _gameObject.transform.parent = _scene.root.transform;
+        
+        RecursiveUpdateScene(_gameObject.transform);
+    }
+
     AddToRenderQueue(_renderer)
     {
         this._renderQueue.push(_renderer);
@@ -2722,6 +2795,32 @@ export class Engine
     AddToScenes(_scene)
     {
         this._scenes.push(_scene);
+    }
+
+    LoadScene(_scene)
+    {
+        for (let i = 0; i < this._scenes.length; i++)
+        {
+            if (this._scenes[i] != this.persistentScene)
+            {
+                this.UnloadScene(this._scenes[i]);
+            }
+        }
+
+        this.currentScene = _scene;
+        this.AddToScenes(_scene);
+    }
+
+    UnloadScene(_scene)
+    {
+        if (_scene == this.currentScene)
+        {
+            this.currentScene = null;
+        }
+
+        _scene.root.Base_Destroy();
+
+        this.RemoveFromScenes(_scene);
     }
 
     RemoveFromScenes(_targetScene)
