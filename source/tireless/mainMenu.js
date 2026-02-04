@@ -326,11 +326,8 @@ export class MainMenu extends Scene
         }
 
         this.musicPlayer.Play();
-    }
 
-    Update()
-    {
-        console.info(this.cursorManager.cursorPosition);
+        console.info(this.root);
     }
 
     OnPlayButton()
