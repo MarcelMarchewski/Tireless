@@ -13,11 +13,13 @@ const _playButton = document.getElementById("playButton");
 
 _playButton.onclick = () =>
 {
-    const _s = new MainMenu();
+    const _startScene = new MainMenu();
+
+    const _scale = 4096 / document.body.clientWidth;
 
     new Engine(256, 240, new Vector2(4, 4), false, "10px solid white");
 
-    Engine.I.LoadScene(_s);
+    Engine.I.LoadScene(_startScene);
 
     _playButton.remove();
 }

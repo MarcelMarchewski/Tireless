@@ -328,6 +328,11 @@ export class MainMenu extends Scene
         this.musicPlayer.Play();
     }
 
+    Update()
+    {
+        console.info(this.cursorManager.cursorPosition);
+    }
+
     OnPlayButton()
     {
         Engine.I.LoadScene(new Gym());

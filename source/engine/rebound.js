@@ -558,8 +558,8 @@ export class CursorManager extends Component
     {
         const _rect = Engine.I.c.getBoundingClientRect();
 
-        const _x = Math.round((_event.clientX - _rect.left) / Engine.I.scale.x);
-        const _y = Math.round((_event.clientY - _rect.top) / Engine.I.scale.y);
+        const _x = Math.floor(_event.offsetX / Engine.I.scale.x);
+        const _y = Math.floor(_event.offsetY / Engine.I.scale.y);
 
         this._cursorPosition = new Vector2(_x, Engine.I.height - _y);
 

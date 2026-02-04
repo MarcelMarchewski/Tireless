@@ -24,4 +24,6 @@ body
     background-image: url("tirelessSiteBackground.png");
     background-size: 100vh;
     background-repeat: repeat-x;
+
+    margin: 0;
 }
