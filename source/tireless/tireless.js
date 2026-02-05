@@ -15,9 +15,9 @@ _playButton.onclick = () =>
 {
     const _startScene = new MainMenu();
 
-    const _scale = 4096 / document.body.clientWidth;
+    const _scale = 5176 / document.body.clientWidth;
 
-    new Engine(256, 240, new Vector2(4, 4), false, "10px solid white");
+    new Engine(256, 240, new Vector2(_scale, _scale), false, "10px solid white");
 
     Engine.I.LoadScene(_startScene);
 

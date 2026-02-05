@@ -326,8 +326,6 @@ export class MainMenu extends Scene
         }
 
         this.musicPlayer.Play();
-
-        console.info(this.root);
     }
 
     OnPlayButton()
