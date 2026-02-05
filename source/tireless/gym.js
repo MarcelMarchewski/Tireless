@@ -43,7 +43,7 @@ class PlayerController extends Component
 
     Update()
     {
-        this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * _moveSpeed, Engine.I.deltaTime * _moveSpeed)));
+        this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
     }
 
     OnKeyDown(_event)

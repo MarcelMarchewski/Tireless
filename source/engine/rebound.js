@@ -854,6 +854,76 @@ export class SpriteRenderer extends Component
     }
 }
 
+export class TextRenderer extends Component
+{
+    constructor(gameObject, data=null)
+    {
+        super(gameObject);
+
+        this._textData = data;
+        
+        this._queued = false;
+    }
+
+    Start()
+    {
+        this.Enqueue();
+    }
+
+    OnEnable()
+    {
+        this.Enqueue();
+    }
+
+    OnDisable()
+    {
+        this.Deque();
+    }
+
+    OnDestroy()
+    {
+        this.Deque();
+    }
+
+    Enqueue()
+    {
+        if (!this._queued)
+        {
+            Engine.I.AddToRenderQueue(this);
+
+            this._queued = true;
+        }
+    }
+
+    Deque()
+    {
+        if (this._queued)
+        {
+            Engine.I.RemoveFromRenderQueue(this);
+
+            this._queued = false;
+        }
+    }
+
+    get textData()
+    {
+        return this._textData;
+    }
+
+    set textData(_value)
+    {
+        if (_value != null)
+        {
+            this._textData = _value;
+        }
+
+        else
+        {
+            this._textData = new TextData(this.gameObject, "", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER);
+        }
+    }
+}
+
 export class AudioMixer
 {
     constructor(name, volume=1, muted=false, parentMixer=null)
@@ -1523,38 +1593,14 @@ export class TilemapRenderer extends SpriteRenderer
 
 export class TextData
 {
-    constructor(gameObject, text="Text here...", font="12px serif", colour="black", layer=0)
+    constructor(text="Text here...", font="12px serif", colour="black", layer=Engine.I.UI_TEXT_DEFAULT_LAYER)
     {
-        this.gameObject = gameObject;
-
         this.text = text;
         this.font = font;
 
         this.colour = colour;
 
         this.layer = layer;
-
-        this._queued = false;
-    }
-
-    Enqueue()
-    {
-        if (!this._queued)
-        {
-            Engine.I.AddToRenderQueue(this);
-
-            this._queued = true;
-        }
-    }
-
-    Deque()
-    {
-        if (this._queued)
-        {
-            Engine.I.RemoveFromRenderQueue(this);
-
-            this._queued = false;
-        }
     }
 }
 
@@ -1874,14 +1920,14 @@ export class InputManager extends Component
 
 export class UIElement extends CursorBoxCollider
 {
-    constructor(gameObject, canvas, animator, text=new TextData(gameObject, "UI ELEMENT", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=[], interactable=true)
+    constructor(gameObject, canvas, animator, textData=new TextData("", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=[], interactable=true)
     {
         super(gameObject, width, height);
 
         this.canvas = canvas;
         this.animator = animator;
 
-        this.text = text;
+        this.text = gameObject.AddComponent(TextRenderer, textData);
 
         if (sfx.length > 0)
         {
@@ -1909,7 +1955,6 @@ export class UIElement extends CursorBoxCollider
         if (!this._bound)
         {
             this.canvas.AddElement(this);
-            this.text.Enqueue();
             this._bound = true;
         }
     }
@@ -1919,7 +1964,6 @@ export class UIElement extends CursorBoxCollider
         if (!this._bound)
         {
             this.canvas.AddElement(this);
-            this.text.Enqueue();
             this._bound = true;
         }   
     }
@@ -1931,7 +1975,6 @@ export class UIElement extends CursorBoxCollider
         if (this._bound)
         {
             this.canvas.RemoveElement(this);
-            this.text.Deque();
             this._bound = false;
         }
     }
@@ -1943,7 +1986,6 @@ export class UIElement extends CursorBoxCollider
         if (this._bound)
         {
             this.canvas.RemoveElement(this);
-            this.text.Deque();
             this._bound = false;
         }
     }
@@ -2693,7 +2735,7 @@ export class Engine
                 this.ctx.restore();
             }
 
-            else
+            else if (this._renderQueue[i] instanceof TextRenderer)
             {
                 this.ctx.save();
 
@@ -2703,13 +2745,13 @@ export class Engine
 
                 this.ctx.scale(this._renderQueue[i].gameObject.transform.lossyScale.x, this._renderQueue[i].gameObject.transform.lossyScale.y);
 
-                this.ctx.font = this._renderQueue[i].font;
+                this.ctx.font = this._renderQueue[i].textData.font;
 
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "middle";
 
-                this.ctx.fillStyle = this._renderQueue[i].colour;
-                this.ctx.fillText(this._renderQueue[i].text, 0, 0);
+                this.ctx.fillStyle = this._renderQueue[i].textData.colour;
+                this.ctx.fillText(this._renderQueue[i].textData.text, 0, 0);
 
                 this.ctx.restore();
             }
