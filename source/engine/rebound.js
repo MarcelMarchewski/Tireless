@@ -2572,9 +2572,9 @@ export class Engine
 
         this.masterMixer = new AudioMixer("masterAudioMixer");
 
-        this.sfxMixer = new AudioMixer("sfxAudioMixer", undefined, undefined, this.masterMixer);
+        this.sfxMixer = new AudioMixer("sfxAudioMixer", 0.7, undefined, this.masterMixer);
         this.musicMixer = new AudioMixer("musicAudioMixer", 0.7, undefined, this.masterMixer);
-        this.dialogueMixer = new AudioMixer("dialogueAudioMixer", undefined, undefined, this.masterMixer);
+        this.dialogueMixer = new AudioMixer("dialogueAudioMixer", 0.7, undefined, this.masterMixer);
 
         this.persistentScene = new Scene();
         this.currentScene = null;
