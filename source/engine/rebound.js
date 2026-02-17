@@ -119,6 +119,16 @@ export class Vector2
             _target.x * _s + _target.y * _c
         );
     }
+
+    static Dot(_a, _b)
+    {
+        return _a.x * _b.x + _a.y * _b.y;
+    }
+
+    static DegreeAngle(_a, _b)
+    {
+        return Math.atan2(_b.y - _a.y, _b.x - _a.x) * 180 / Math.PI;
+    }
 }
 
 export class Transform
@@ -2647,7 +2657,7 @@ export class Engine
 
                 this.ctx.translate(_renderer.gameObject.transform.position.x, this.height - _renderer.gameObject.transform.position.y);
 
-                this.ctx.rotate(-_renderer.gameObject.transform.rotation);
+                this.ctx.rotate(-(_renderer.gameObject.transform.rotation * Math.PI / 180));
 
                 this.ctx.scale(_renderer.gameObject.transform.lossyScale.x, _renderer.gameObject.transform.lossyScale.y);
 
@@ -2726,7 +2736,7 @@ export class Engine
 
                 this.ctx.translate(_renderer.gameObject.transform.position.x, this.height - _renderer.gameObject.transform.position.y);
 
-                this.ctx.rotate(-_renderer.gameObject.transform.rotation);
+                this.ctx.rotate(-(_renderer.gameObject.transform.rotation * Math.PI / 180));
 
                 this.ctx.scale(_renderer.gameObject.transform.lossyScale.x, _renderer.gameObject.transform.lossyScale.y);
 
@@ -2741,7 +2751,7 @@ export class Engine
 
                 this.ctx.translate(this._renderQueue[i].gameObject.transform.position.x, this.height - this._renderQueue[i].gameObject.transform.position.y);
 
-                this.ctx.rotate(-this._renderQueue[i].gameObject.transform.rotation);
+                this.ctx.rotate(-(this._renderQueue[i].gameObject.transform.rotation * Math.PI / 180));
 
                 this.ctx.scale(this._renderQueue[i].gameObject.transform.lossyScale.x, this._renderQueue[i].gameObject.transform.lossyScale.y);
 

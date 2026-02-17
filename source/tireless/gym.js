@@ -31,6 +31,9 @@ class PlayerController extends Component
         this.deadzone = 0.15;
 
         this.input = Vector2.zero;
+
+        this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
+        this.dashCursor.enabled = false;
     }
 
     Start()
@@ -44,6 +47,10 @@ class PlayerController extends Component
     Update()
     {
         this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
+
+        const _mousePos = this.gameObject.scene.cursorManager.cursorPosition;
+
+        this.dashCursor.transform.localRotation = (Vector2.DegreeAngle(this.gameObject.transform.position, _mousePos) * Math.PI / 180) + 67.5;
     }
 
     OnKeyDown(_event)
@@ -76,6 +83,14 @@ class PlayerController extends Component
             case ("KeyD"):
             {
                 this.input.x += 1;
+
+                break;
+            }
+
+            case ("Space"):
+            {
+                this.dashCursor.animator.JumpToFrame(0);
+                this.dashCursor.enabled = true;
 
                 break;
             }
@@ -112,6 +127,13 @@ class PlayerController extends Component
             case ("KeyD"):
             {
                 this.input.x -= 1;
+
+                break;
+            }
+
+            case ("Space"):
+            {
+                this.dashCursor.animator.JumpToFrame(1);
 
                 break;
             }
@@ -175,6 +197,20 @@ class Player extends GameObject
     }
 }
 
+class DashCursor extends GameObject
+{
+    constructor(scene, name="DashCursor", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.pivot = new GameObject(this.scene, "Pivot", this.transform);
+        this.pivot.transform.localPosition.Add(new Vector2(0, 64));
+
+        this.renderer = this.pivot.AddComponent(SpriteRenderer, new Sprite(this.scene.dashCursorTexture, undefined, undefined, new Vector2(16, 16)));
+        this.animator = this.pivot.AddComponent(Animator, this.renderer, 8, 0, false, false);
+    }
+}
+
 export class Gym extends Scene
 {
     constructor()
@@ -183,6 +219,9 @@ export class Gym extends Scene
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayer.png";
+
+        this.dashCursorTexture = new Image();
+        this.dashCursorTexture.src = "source/tireless/resources/textures/Shared/dashCursor.png";
 
         this.backgroundTexture = new Image();
         this.backgroundTexture.src = "source/tireless/resources/textures/Gym/gymBackground.png";
