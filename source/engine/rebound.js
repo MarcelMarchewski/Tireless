@@ -930,7 +930,7 @@ export class TextRenderer extends Component
 
         else
         {
-            this._textData = new TextData(this.gameObject, "", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER);
+            this._textData = new TextData("", undefined, undefined, undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER);
         }
     }
 }
@@ -1604,12 +1604,15 @@ export class TilemapRenderer extends SpriteRenderer
 
 export class TextData
 {
-    constructor(text="Text here...", font="12px serif", colour="black", layer=Engine.I.UI_TEXT_DEFAULT_LAYER)
+    constructor(text="Text here...", font="12px serif", colour="black", alignment="center", baseline="middle", layer=Engine.I.UI_TEXT_DEFAULT_LAYER)
     {
         this.text = text;
         this.font = font;
 
         this.colour = colour;
+
+        this.alignment = alignment;
+        this.baseline = baseline;
 
         this.layer = layer;
     }
@@ -1931,7 +1934,7 @@ export class InputManager extends Component
 
 export class UIElement extends CursorBoxCollider
 {
-    constructor(gameObject, canvas, animator, textData=new TextData("", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=[], interactable=true)
+    constructor(gameObject, canvas, animator, textData=new TextData("", "8px VCR_OSD_MONO", "white", "center", "middle", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=[], interactable=true)
     {
         super(gameObject, width, height);
 
@@ -2758,8 +2761,8 @@ export class Engine
 
                 this.ctx.font = this._renderQueue[i].textData.font;
 
-                this.ctx.textAlign = "center";
-                this.ctx.textBaseline = "middle";
+                this.ctx.textAlign = this._renderQueue[i].textData.alignment;
+                this.ctx.textBaseline = this._renderQueue[i].textData.baseline;
 
                 this.ctx.fillStyle = this._renderQueue[i].textData.colour;
                 this.ctx.fillText(this._renderQueue[i].textData.text, 0, 0);

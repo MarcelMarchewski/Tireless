@@ -22,7 +22,7 @@ import
 
 class EntityToggleButton extends UIElement
 {
-    constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
+    constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
     {   
         super(gameObject, canvas, animator, textData, width, height, sfx, interactable);
 
@@ -40,7 +40,7 @@ class EntityToggleButton extends UIElement
 
 class SceneSwapButton extends UIElement
 {
-    constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
+    constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
     {   
         super(gameObject, canvas, animator, textData, width, height, sfx, interactable);
     }
@@ -223,6 +223,12 @@ class SettingsMenuCanvas extends GameObject
 
         this.canvas = this.AddComponent(UICanvas);
 
+        this.logoRenderer = new GameObject(this.scene, "Logo Renderer", this.transform).AddComponent(SpriteRenderer, new Sprite(this.scene.settingsLogoTexture, 1, undefined, new Vector2(96, 32)));
+        this.logoAnimator = this.logoRenderer.gameObject.AddComponent(Animator, this.logoRenderer, 2);
+
+        this.logoRenderer.gameObject.transform.localPosition = new Vector2(128, 180);
+        this.logoRenderer.gameObject.transform.localScale = new Vector2(2, 2);
+
         this.backButton = new NextCanvasButton(this.scene, this, new Vector2(128, 32), "Back Button", "BACK", this.transform);
 
         this.musicController = new MediaController(this.scene, Engine.I.musicMixer, this, "MUSIC VOLUME", "Music Controller", this.transform);
@@ -241,6 +247,12 @@ class MainMenuCanvas extends GameObject
 
         this.canvas = this.AddComponent(UICanvas);
 
+        this.logoRenderer = new GameObject(this.scene, "Logo Renderer", this.transform).AddComponent(SpriteRenderer, new Sprite(this.scene.logoTexture, 1, undefined, new Vector2(96, 32)));
+        this.logoAnimator = this.logoRenderer.gameObject.AddComponent(Animator, this.logoRenderer, 9);
+
+        this.logoRenderer.gameObject.transform.localPosition = new Vector2(128, 180);
+        this.logoRenderer.gameObject.transform.localScale = new Vector2(2, 2);
+
         this.playButton = new PlayButton(this.scene, this, new Vector2(128, 142), undefined, undefined, this.transform);
 
         this.settingsButton = new NextCanvasButton(this.scene, this, new Vector2(128, 102), "Settings Button", "SETTINGS", this.transform);
@@ -258,7 +270,7 @@ class PlayButton extends GameObject
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.uiButtonTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 32)));
         this.animator = this.AddComponent(Animator, this.renderer, 4, 0, false, false);
         
-        this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
+        this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
     }
 }
 
@@ -273,7 +285,7 @@ class NextCanvasButton extends GameObject
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.uiButtonTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 32)));
         this.animator = this.AddComponent(Animator, this.renderer, 4, 0, false, false);
         
-        this.toggle = this.AddComponent(EntityToggleButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
+        this.toggle = this.AddComponent(EntityToggleButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
     }
 }
 
@@ -288,6 +300,9 @@ export class MainMenu extends Scene
 
         this.logoTexture = new Image();
         this.logoTexture.src = "source/tireless/resources/textures/MainMenu/tirelessTitle.png";
+
+        this.settingsLogoTexture = new Image();
+        this.settingsLogoTexture.src = "source/tireless/resources/textures/MainMenu/tirelessSettingsLogo.png";
 
         this.uiButtonTexture = new Image();
         this.uiButtonTexture.src = "source/tireless/resources/textures/UI/tirelessButtonPrefab.png";
@@ -313,12 +328,6 @@ export class MainMenu extends Scene
     {
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(SpriteRenderer, new Sprite(this.backgroundTexture, 0));
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 120);
-
-        this.logoRenderer = new GameObject(this, "Logo Renderer").AddComponent(SpriteRenderer, new Sprite(this.logoTexture, 1, undefined, new Vector2(96, 32)));
-        this.logoAnimator = this.logoRenderer.gameObject.AddComponent(Animator, this.logoRenderer, 9);
-
-        this.logoRenderer.gameObject.transform.localPosition = new Vector2(128, 180);
-        this.logoRenderer.gameObject.transform.localScale = new Vector2(2, 2);
 
         this.settingsMenuCanvas = new SettingsMenuCanvas(this);
         this.settingsMenuCanvas.enabled = false;
