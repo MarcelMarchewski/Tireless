@@ -76,6 +76,8 @@ class PlayerController extends Component
 
             else
             {
+                this.gameObject.transform.position = this.dashCursor.pivot.transform.position;
+
                 this.dashCursor.transform.parent = this.gameObject.transform;
                 this.dashCursor.transform.localPosition = Vector2.zero;
 
@@ -122,8 +124,11 @@ class PlayerController extends Component
 
             case ("Space"):
             {
-                this.dashCursor.animator.JumpToFrame(0);
-                this.dashCursor.enabled = true;
+                if (!this.dashing)
+                {
+                    this.dashCursor.animator.JumpToFrame(0);
+                    this.dashCursor.enabled = true;
+                }
 
                 break;
             }
