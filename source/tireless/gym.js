@@ -28,12 +28,15 @@ class PlayerController extends Component
         this.animator = this.gameObject.GetComponent(Animator);
 
         this.speed = 150;
+        this.dashSpeed = 750;
         this.deadzone = 0.15;
 
         this.input = Vector2.zero;
 
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
         this.dashCursor.enabled = false;
+
+        this.dashing = false;
     }
 
     Start()
@@ -46,11 +49,41 @@ class PlayerController extends Component
 
     Update()
     {
-        this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
+        if (!this.dashing)
+        {
+            this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
 
-        const _mousePos = this.gameObject.scene.cursorManager.cursorPosition;
+            const _mousePos = this.gameObject.scene.cursorManager.cursorPosition;
 
-        this.dashCursor.transform.localRotation = (Vector2.DegreeAngle(this.gameObject.transform.position, _mousePos) * Math.PI / 180) + 67.5;
+            this.dashCursor.transform.localRotation = Vector2.DegreeAngle(this.gameObject.transform.position, _mousePos) - 90;
+        }
+
+        else
+        {
+            if (this.dashCursor.transform.parent != null)
+            {
+                this.dashCursor.transform.parent = null;
+            }
+
+            const _direction = Vector2.Subtract(this.gameObject.transform.position, this.dashCursor.pivot.transform.position);
+
+            if (_direction.magnitude > 3)
+            {
+                const _dash = Vector2.Multiply(_direction.normalised, new Vector2(Engine.I.deltaTime * this.dashSpeed * -1, Engine.I.deltaTime * this.dashSpeed * -1));
+
+                this.gameObject.transform.localPosition.Add(_dash);
+            }
+
+            else
+            {
+                this.dashCursor.transform.parent = this.gameObject.transform;
+                this.dashCursor.transform.localPosition = Vector2.zero;
+
+                this.dashing = false;
+
+                this.dashCursor.enabled = false;
+            }
+        }
     }
 
     OnKeyDown(_event)
@@ -134,6 +167,8 @@ class PlayerController extends Component
             case ("Space"):
             {
                 this.dashCursor.animator.JumpToFrame(1);
+
+                this.dashing = true;
 
                 break;
             }

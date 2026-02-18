@@ -110,8 +110,10 @@ export class Vector2
 
     static Rotate(_target, _angle)
     {
-        const _c = Math.cos(_angle);
-        const _s = Math.sin(_angle);
+        const _rad = _angle * Math.PI / 180;
+
+        const _c = Math.cos(_rad);
+        const _s = Math.sin(_rad);
 
         return new Vector2
         (
@@ -144,8 +146,6 @@ export class Transform
         this._parent = null;
 
         this._children = [];
-
-        this._initialising = true;
     }
 
     get parent()
@@ -155,20 +155,16 @@ export class Transform
 
     set parent(_newParent)
     {   
-        if (this._parent != null)
-        {
-            this._parent.Internal_RemoveChild(this);
-        }
-
-        if (_newParent == null)
-        {
-            this._parent = null;
-            return;
-        }
+        if (this._parent == _newParent) { return; }
 
         const _worldPosition = this.position;
         const _worldRotation = this.rotation;
         const _worldScale = this.scale;
+
+        if (this._parent != null)
+        {
+            this._parent.Internal_RemoveChild(this);
+        }
 
         this._parent = _newParent;
 
@@ -177,14 +173,19 @@ export class Transform
             this._parent.Internal_AddChild(this);
         }
 
-        if (!this._initialising && this._parent != null)
+        if (this.parent == null)
         {
-            this.position = Vector2.Divide(Vector2.Rotate(Vector2.Subtract(_worldPosition, this._parent.position), -this._parent.rotation), this._parent.scale);
-            this.rotation = _worldRotation - this._parent.rotation;
-            this.scale = Vector2.Divide(_worldScale, this._parent.scale);
+            this.localPosition = _worldPosition;
+            this.localRotation = _worldRotation;
+            this.localScale = _worldScale;
         }
 
-        this._initialising = false;
+        else
+        {
+            this.position = _worldPosition;
+            this.rotation = _worldRotation;
+            this.scale = _worldScale;
+        }
     }
 
     get position()
