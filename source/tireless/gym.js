@@ -28,7 +28,7 @@ class PlayerController extends Component
         this.animator = this.gameObject.GetComponent(Animator);
 
         this.speed = 150;
-        this.dashSpeed = 750;
+        this.dashSpeed = 400;
         this.deadzone = 0.15;
 
         this.input = Vector2.zero;
@@ -67,7 +67,7 @@ class PlayerController extends Component
 
             const _direction = Vector2.Subtract(this.gameObject.transform.position, this.dashCursor.pivot.transform.position);
 
-            if (_direction.magnitude > 3)
+            if (_direction.magnitude > 10)
             {
                 const _dash = Vector2.Multiply(_direction.normalised, new Vector2(Engine.I.deltaTime * this.dashSpeed * -1, Engine.I.deltaTime * this.dashSpeed * -1));
 
