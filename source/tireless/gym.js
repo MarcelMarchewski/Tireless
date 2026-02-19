@@ -195,15 +195,29 @@ class PlayerController extends Component
 
     UpdateAnimator()
     {
-        const _x = Math.abs(this.input.x) > this.deadzone ? this.input.x : 0;
-        const _y = Math.abs(this.input.y) > this.deadzone ? this.input.y : 0;
+        let _x;
+        let _y;
+
+        if (!this.dashing)
+        {
+            _x = Math.abs(this.input.x) > this.deadzone ? this.input.x : 0;
+            _y = Math.abs(this.input.y) > this.deadzone ? this.input.y : 0;
+        }
+
+        else
+        {
+            const _direction = Vector2.Subtract(this.gameObject.transform.position, this.dashCursor.pivot.transform.position);
+
+            _x = -_direction.x;
+            _y = -_direction.y;
+        }
 
         if (_x == 0 && _y == 0) { return; }
 
         const _degrees = Math.atan2(_y, _x) * 180 / Math.PI;
 
         let _frame = 0;
-
+        
         if (_degrees >= -22.5 && _degrees < 22.5) { _frame = 2; }
 
         else if (_degrees >= 22.5 && _degrees < 67.5) { _frame = 1; }
@@ -230,7 +244,7 @@ class Player extends GameObject
     {
         super(scene, name, parent);
 
-        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.playerTexture, undefined, undefined, new Vector2(16, 16)));
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.playerTexture, undefined, undefined, new Vector2(32, 32)));
         this.animator = this.AddComponent(Animator, this.renderer, 8, 0, false, false);
 
         this.controller = this.AddComponent(PlayerController);
@@ -258,7 +272,7 @@ export class Gym extends Scene
         super();
 
         this.playerTexture = new Image();
-        this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayer.png";
+        this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
 
         this.dashCursorTexture = new Image();
         this.dashCursorTexture.src = "source/tireless/resources/textures/Shared/dashCursor.png";
