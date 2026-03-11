@@ -632,7 +632,7 @@ export class CursorBoxCollider extends Component
         this.Base_OnClickStart = this.Base_OnClickStart.bind(this);
         this.Base_OnClickEnd = this.Base_OnClickEnd.bind(this);
 
-        this._cursorManager = this.gameObject.scene.cursorManager;
+        this._cursorManager = Engine.I.persistentScene.cursorManager;
 
         this._isColliding = false;
     }
@@ -1657,7 +1657,7 @@ export class InputManager extends Component
     {
         if (!this._bound)
         {
-            this.gameObject.scene.cursorManager.AddCursorPositionListener(this.OnCursorPositionUpdate);
+            Engine.I.persistentScene.cursorManager.AddCursorPositionListener(this.OnCursorPositionUpdate);
 
             document.addEventListener("keydown", this.OnKeyDown);
             document.addEventListener("keyup", this.OnKeyUp);
@@ -2191,7 +2191,7 @@ export class UICanvas extends Component
 
     Internal_CheckInputMode()
     {
-        if (this.gameObject.scene.inputManager.inputMode == 0)
+        if (Engine.I.persistentScene.inputManager.inputMode == 0)
         {
             if (this._currentElement != null)
             {
@@ -2223,18 +2223,20 @@ export class UICanvas extends Component
 
     Internal_AddListeners()
     {
-        this.gameObject.scene.inputManager.AddGamepadButtonDownListener(this.OnGamepadButtonDown);
-        this.gameObject.scene.inputManager.AddGamepadButtonUpListener(this.OnGamepadButtonUp);
+        Engine.I.persistentScene.inputManager.AddGamepadButtonDownListener(this.OnGamepadButtonDown);
+        Engine.I.persistentScene.inputManager.AddGamepadButtonUpListener(this.OnGamepadButtonUp);
 
-        this.gameObject.scene.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
+        Engine.I.persistentScene.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
     }
 
     Internal_RemoveListeners()
     {
-        this.gameObject.scene.inputManager.RemoveGamepadButtonDownListener(this.OnGamepadButtonDown);
-        this.gameObject.scene.inputManager.RemoveGamepadButtonUpListener(this.OnGamepadButtonUp);
+        Engine.I.persistentScene.inputManager.RemoveGamepadButtonDownListener(this.OnGamepadButtonDown);
+        Engine.I.persistentScene.inputManager.RemoveGamepadButtonUpListener(this.OnGamepadButtonUp);
 
-        this.gameObject.scene.inputManager.RemoveGamepadLeftStickListener(this.OnGamepadLeftStick);
+        Engine.I.persistentScene.inputManager.RemoveGamepadLeftStickListener(this.OnGamepadLeftStick);
+
+        this._bound = false;
     }
 
     Internal_FindNextInteractable(_startElement, _direction)
@@ -2454,7 +2456,7 @@ export class UICanvas extends Component
             return;
         }
 
-        if (!_currentRemoved && _elementIndex < this._currentElementIndex)
+        if (!_currentRemoved && _elementIndex < this._elements.indexOf(this._currentElement))
         {
             this._currentElement--;
             return;
@@ -2485,8 +2487,11 @@ export class Scene
 
     Base_Start()
     {
-        this.cursorManager = this.root.AddComponent(CursorManager);
-        this.inputManager = this.root.AddComponent(InputManager);
+        if (this == Engine.I.persistentScene)
+        {
+            this.cursorManager = this.root.AddComponent(CursorManager);
+            this.inputManager = this.root.AddComponent(InputManager);
+        }
 
         this.Start();
     }
@@ -2539,7 +2544,7 @@ export class Engine
             Engine.I = this;
         }
 
-        this.scale = scale;
+        this._scale = scale;
 
         this.c = document.createElement("canvas");
 
@@ -2596,6 +2601,15 @@ export class Engine
         this._deltaTime = 0;
         this._renderQueue = [];
         this._scenes = [];
+
+        document.addEventListener("keydown", (_event) => 
+            {
+                if (_event.code == "Tab" || _event.code == "AltLeft" || _event.code == "MetaLeft" || _event.code == "ControlLeft")
+                {
+                    _event.preventDefault();
+                }
+            }
+        )
 
         this._scenes.push(this.persistentScene);
 
@@ -2770,6 +2784,19 @@ export class Engine
                 this.ctx.restore();
             }
         }
+    }
+
+    set scale(_newScale)
+    {
+        this._scale = _newScale;
+
+        this.c.width = this._width * this._scale.x;
+        this.c.height = this._height * this._scale.y;
+    }
+
+    get scale()
+    {
+        return this._scale;
     }
 
     set width(_newWidth)

@@ -23,7 +23,11 @@ class PlayerController extends Component
         this.OnKeyDown = this.OnKeyDown.bind(this);
         this.OnKeyUp = this.OnKeyUp.bind(this);
         
+        this.OnGamepadButtonDown = this.OnGamepadButtonDown.bind(this);
+        this.OnGamepadButtonUp = this.OnGamepadButtonUp.bind(this);
+
         this.OnGamepadLeftStick = this.OnGamepadLeftStick.bind(this);
+        this.OnGamepadRightStick = this.OnGamepadRightStick.bind(this);
 
         this.animator = this.gameObject.GetComponent(Animator);
 
@@ -33,6 +37,10 @@ class PlayerController extends Component
 
         this.input = Vector2.zero;
 
+        this.rightJoystickInput = Vector2.zero;
+
+        this.directionDegrees = 0;
+
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
         this.dashCursor.enabled = false;
 
@@ -41,21 +49,45 @@ class PlayerController extends Component
 
     Start()
     {
-        this.gameObject.scene.inputManager.AddKeyDownListener(this.OnKeyDown);
-        this.gameObject.scene.inputManager.AddKeyUpListener(this.OnKeyUp);
+        Engine.I.persistentScene.inputManager.AddKeyDownListener(this.OnKeyDown);
+        Engine.I.persistentScene.inputManager.AddKeyUpListener(this.OnKeyUp);
 
-        this.gameObject.scene.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
+        Engine.I.persistentScene.inputManager.AddGamepadButtonDownListener(this.OnGamepadButtonDown);
+        Engine.I.persistentScene.inputManager.AddGamepadButtonUpListener(this.OnGamepadButtonUp);
+
+        Engine.I.persistentScene.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
+        Engine.I.persistentScene.inputManager.AddGamepadRightStickListener(this.OnGamepadRightStick);
     }
 
     Update()
     {
+        this.UpdateAnimator();
+
         if (!this.dashing)
         {
             this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
 
-            const _mousePos = this.gameObject.scene.cursorManager.cursorPosition;
+            if (Engine.I.persistentScene.inputManager.inputMode == 0)
+            {
+                const _mousePos = Engine.I.persistentScene.cursorManager.cursorPosition;
 
-            this.dashCursor.transform.localRotation = Vector2.DegreeAngle(this.gameObject.transform.position, _mousePos) - 90;
+                this.dashCursor.transform.localRotation = Vector2.DegreeAngle(this.gameObject.transform.position, _mousePos) - 90;
+            }
+
+            else
+            {
+                const _joystickPos = Vector2.Add(this.gameObject.transform.position, this.rightJoystickInput);
+
+                if (this.rightJoystickInput.magnitude < 0.1)
+                {
+                    this.dashCursor.transform.localRotation = this.directionDegrees - 90;
+                }
+
+                else
+                {
+                    this.dashCursor.transform.localRotation = Vector2.DegreeAngle(this.gameObject.transform.position, _joystickPos) - 90;
+                }
+            }
         }
 
         else
@@ -133,8 +165,6 @@ class PlayerController extends Component
                 break;
             }
         }
-
-        this.UpdateAnimator();
     }
 
     OnKeyUp(_event)
@@ -178,8 +208,38 @@ class PlayerController extends Component
                 break;
             }
         }
+    }
 
-        this.UpdateAnimator();
+    OnGamepadButtonDown(_button, _name)
+    {
+        switch (_name)
+        {
+            case ("L2"):
+            {
+                if (!this.dashing)
+                {
+                    this.dashCursor.animator.JumpToFrame(0);
+                    this.dashCursor.enabled = true;
+                }
+
+                break;
+            }
+        }
+    }
+
+    OnGamepadButtonUp(_button, _name)
+    {
+        switch (_name)
+        {
+            case ("L2"):
+            {
+                this.dashCursor.animator.JumpToFrame(1);
+
+                this.dashing = true;
+
+                break;
+            }
+        }
     }
 
     OnGamepadLeftStick(_valueX, _valueY)
@@ -189,8 +249,15 @@ class PlayerController extends Component
             Math.abs(_valueX) > this.deadzone ? _valueX : 0, 
             Math.abs(-_valueY) > this.deadzone ? -_valueY : 0
         );
+    }
 
-        this.UpdateAnimator();
+    OnGamepadRightStick(_valueX, _valueY)
+    {
+        this.rightJoystickInput = new Vector2
+        (
+            Math.abs(_valueX) > this.deadzone ? _valueX : 0, 
+            Math.abs(-_valueY) > this.deadzone ? -_valueY : 0
+        );
     }
 
     UpdateAnimator()
@@ -233,6 +300,8 @@ class PlayerController extends Component
         else if (_degrees >= -112.5 && _degrees < -67.5) { _frame = 4; }
 
         else if (_degrees >= -67.5 && _degrees < -22.5) { _frame = 3; }
+
+        this.directionDegrees = _degrees;
 
         this.animator.JumpToFrame(_frame);
     }

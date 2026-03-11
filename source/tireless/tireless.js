@@ -6,16 +6,19 @@ import
 
 import
 {
-    MainMenu
-} from "/source/tireless/mainMenu.js";
+    SplashScreen
+} from "/source/tireless/splashScreen.js";
 
 const _playButton = document.getElementById("playButton");
 
+const _baseWidth = 256;
+const _baseHeight = 240;
+
 _playButton.onclick = () =>
 {
-    const _startScene = new MainMenu();
+    const _startScene = new SplashScreen();
 
-    const _scale = 5176 / document.body.clientWidth;
+    const _scale = Math.floor(Math.min(window.innerWidth / _baseWidth, window.innerHeight / _baseHeight));
 
     new Engine(256, 240, new Vector2(_scale, _scale), false, "10px solid white");
 
