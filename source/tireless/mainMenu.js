@@ -7,6 +7,7 @@ import
     SpriteRenderer,
     Sprite,
     Animator,
+    AnimationClip,
     UICanvas,
     TextRenderer,
     TextData,
@@ -160,7 +161,7 @@ class AudioPlusButton extends GameObject
         super(scene, name, parent);
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.plusButtonTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(32, 32)));
-        this.animator = this.AddComponent(Animator, this.renderer, 4, 0, false, false);
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.scene.buttonAnimationClip]);
 
         this.volumeButton = this.AddComponent(AudioVolumeButton, canvasObject.GetComponent(UICanvas), this.animator, mixer, 0.1);
     }
@@ -173,7 +174,7 @@ class AudioMinusButton extends GameObject
         super(scene, name, parent);
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.minusButtonTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(32, 32)));
-        this.animator = this.AddComponent(Animator, this.renderer, 4, 0, false, false);
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.scene.buttonAnimationClip]);
 
         this.volumeButton = this.AddComponent(AudioVolumeButton, canvasObject.GetComponent(UICanvas), this.animator, mixer, -0.1);
     }
@@ -186,7 +187,7 @@ class AudioIcon extends GameObject
         super(scene, name, parent);
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.audioIconTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(32, 32)));
-        this.animator = this.AddComponent(Animator, this.renderer, 7, 0, false, false);
+        this.animator = this.AddComponent(Animator, this.renderer, 7, [this.scene.audioIconAnimationClip]);
 
         this.iconAnimator = this.AddComponent(AudioIconAnimator);
     }
@@ -268,7 +269,7 @@ class PlayButton extends GameObject
         this.transform.localPosition = localPosition;
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.uiButtonTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 32)));
-        this.animator = this.AddComponent(Animator, this.renderer, 4, 0, false, false);
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.scene.buttonAnimationClip]);
         
         this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
     }
@@ -283,7 +284,7 @@ class NextCanvasButton extends GameObject
         this.transform.localPosition = localPosition;
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.uiButtonTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 32)));
-        this.animator = this.AddComponent(Animator, this.renderer, 4, 0, false, false);
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.scene.buttonAnimationClip]);
         
         this.toggle = this.AddComponent(EntityToggleButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
     }
@@ -315,6 +316,9 @@ export class MainMenu extends Scene
 
         this.minusButtonTexture = new Image();
         this.minusButtonTexture.src = "source/tireless/resources/textures/UI/tirelessMinusButton.png";
+
+        this.buttonAnimationClip = new AnimationClip("ButtonAnimation", 0, 3, 0, false, false);
+        this.audioIconAnimationClip = new AnimationClip("AudioIconAnimation", 0, 6, 0, false, false);
     }
 
     SetupButtonTargets()

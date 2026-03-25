@@ -1344,32 +1344,54 @@ export class AudioPlayer extends Component
     }
 }
 
+export class AnimationClip
+{
+    constructor(name, startFrame, endFrame, frameDuration=0.1, loop=true, autoplay=true)
+    {
+        this.name = name;
+
+        this.startFrame = startFrame;
+        this.endFrame = endFrame;
+        
+        this.frameDuration = frameDuration;
+
+        this.loop = loop;
+        this.autoplay = autoplay;
+    }
+}
+
 export class Animator extends Component
 {
-    constructor(gameObject, spriteRenderer, frameCount, frameDuration=0.1, loop=true, autoplay=true)
+    constructor(gameObject, spriteRenderer, frameCount, clips=[])
     {
         super(gameObject);
 
         this.spriteRenderer = spriteRenderer;
 
         this.frameCount = frameCount;
-        this.frameDuration = frameDuration;
 
-        this._currentFrame = 0;
         this._timer = 0;
         this._playing = false;
 
         this._frames = [];
-        
-        this.loop = loop;
-        this.autoplay = autoplay;
+
+        this._clips = clips;
+
+        if (this._clips.length == 0)
+        {
+            this._clips.push(new AnimationClip("DefaultClip", 0, this.frameCount));
+        }
+
+        this._currentClip = this._clips[0];
+
+        this._currentFrame = this._currentClip.startFrame;
 
         this.SetTexture(this.spriteRenderer.sprite.texture, this.frameCount);
     }
 
     Start() 
     {
-        if (this.autoplay)
+        if (this._currentClip.autoplay)
         {
             this.Play();
         }
@@ -1386,9 +1408,9 @@ export class Animator extends Component
 
         this._timer += Engine.I.deltaTime;
 
-        while (this._timer >= this.frameDuration)
+        while (this._timer >= this._currentClip.frameDuration)
         {
-            this._timer -= this.frameDuration;
+            this._timer -= this._currentClip.frameDuration;
             
             this.NextFrame();
         }
@@ -1411,27 +1433,42 @@ export class Animator extends Component
     Stop()
     {
         this._timer = 0;
-        this._currentFrame = 0;
+
+        this._currentFrame = this._currentClip.startFrame;
 
         this._playing = false;
 
         this.Internal_RunFrame();
     }
 
+    SetClip(_name)
+    {
+        for (let i = 0; i < this._clips.length; i++)
+        {
+            if (this._clips[i].name == _name)
+            {
+                this._currentClip = this._clips[i];
+
+                this.JumpToFrame(this._currentClip.startFrame);
+                this.Play();
+            }
+        }
+    }
+
     Internal_RunFrameWithLoopCheck()
     {
         if (this._frames.length == 0) { return; }
 
-        if (this._currentFrame >= this._frames.length)
+        if (this._currentFrame >= this._currentClip.endFrame)
         {
-            if (this.loop)
+            if (this._currentClip.loop)
             {
-                this._currentFrame = 0;
+                this._currentFrame = this._currentClip.startFrame;
             }
 
             else
             {
-                this._currentFrame = this._frames.length - 1;
+                this._currentFrame = this._currentClip.endFrame;
 
                 this.Pause();
             }

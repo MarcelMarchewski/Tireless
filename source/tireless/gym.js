@@ -7,6 +7,7 @@ import
     TilemapRenderer,
     Sprite,
     Animator,
+    AnimationClip,
     UICanvas,
     TextData,
     Vector2,
@@ -45,6 +46,8 @@ class PlayerController extends Component
         this.dashCursor.enabled = false;
 
         this.dashing = false;
+
+        this._wasDashing = false;
     }
 
     Start()
@@ -61,8 +64,6 @@ class PlayerController extends Component
 
     Update()
     {
-        this.UpdateAnimator();
-
         if (!this.dashing)
         {
             this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
@@ -97,11 +98,11 @@ class PlayerController extends Component
                 this.dashCursor.transform.parent = null;
             }
 
-            const _direction = Vector2.Subtract(this.gameObject.transform.position, this.dashCursor.pivot.transform.position);
+            const _direction = Vector2.Subtract(this.dashCursor.pivot.transform.position, this.gameObject.transform.position);
 
             if (_direction.magnitude > 10)
             {
-                const _dash = Vector2.Multiply(_direction.normalised, new Vector2(Engine.I.deltaTime * this.dashSpeed * -1, Engine.I.deltaTime * this.dashSpeed * -1));
+                const _dash = Vector2.Multiply(_direction.normalised, new Vector2(Engine.I.deltaTime * this.dashSpeed, Engine.I.deltaTime * this.dashSpeed));
 
                 this.gameObject.transform.localPosition.Add(_dash);
             }
@@ -113,11 +114,14 @@ class PlayerController extends Component
                 this.dashCursor.transform.parent = this.gameObject.transform;
                 this.dashCursor.transform.localPosition = Vector2.zero;
 
+                this._wasDashing = true;
                 this.dashing = false;
 
                 this.dashCursor.enabled = false;
             }
         }
+
+        this.UpdateAnimator();
     }
 
     OnKeyDown(_event)
@@ -265,21 +269,10 @@ class PlayerController extends Component
         let _x;
         let _y;
 
-        if (!this.dashing)
-        {
-            _x = Math.abs(this.input.x) > this.deadzone ? this.input.x : 0;
-            _y = Math.abs(this.input.y) > this.deadzone ? this.input.y : 0;
-        }
+        const _direction = Vector2.Subtract(this.dashCursor.pivot.transform.position, this.gameObject.transform.position);
 
-        else
-        {
-            const _direction = Vector2.Subtract(this.gameObject.transform.position, this.dashCursor.pivot.transform.position);
-
-            _x = -_direction.x;
-            _y = -_direction.y;
-        }
-
-        if (_x == 0 && _y == 0) { return; }
+        _x = _direction.x;
+        _y = _direction.y;
 
         const _degrees = Math.atan2(_y, _x) * 180 / Math.PI;
 
@@ -314,7 +307,7 @@ class Player extends GameObject
         super(scene, name, parent);
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.playerTexture, undefined, undefined, new Vector2(32, 32)));
-        this.animator = this.AddComponent(Animator, this.renderer, 8, 0, false, false);
+        this.animator = this.AddComponent(Animator, this.renderer, 8, [this.scene.fixedAnimationClip]);
 
         this.controller = this.AddComponent(PlayerController);
     }
@@ -330,7 +323,7 @@ class DashCursor extends GameObject
         this.pivot.transform.localPosition.Add(new Vector2(0, 64));
 
         this.renderer = this.pivot.AddComponent(SpriteRenderer, new Sprite(this.scene.dashCursorTexture, undefined, undefined, new Vector2(16, 16)));
-        this.animator = this.pivot.AddComponent(Animator, this.renderer, 8, 0, false, false);
+        this.animator = this.pivot.AddComponent(Animator, this.renderer, 2, [this.scene.fixedAnimationClip]);
     }
 }
 
@@ -348,6 +341,8 @@ export class Gym extends Scene
 
         this.backgroundTexture = new Image();
         this.backgroundTexture.src = "source/tireless/resources/textures/Gym/gymBackground.png";
+
+        this.fixedAnimationClip = new AnimationClip("FixedAnim", 0, 8, 0, false, false);
     }
 
     Start()
