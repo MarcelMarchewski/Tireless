@@ -7,6 +7,7 @@ import
     SpriteRenderer,
     Sprite,
     Animator,
+    AnimationClip,
     UICanvas,
     TextRenderer,
     TextData,
@@ -84,7 +85,7 @@ class BasicSprite extends GameObject
         super(scene, name, parent);
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(texture, frameCount, undefined, dimensions));
-        this.animator = this.AddComponent(Animator, this.renderer, frameCount, 0.1, false, false);
+        this.animator = this.AddComponent(Animator, this.renderer, frameCount, [new AnimationClip("SplashScreenAnimation", 0, frameCount, 0.2, false, false)]);
     }
 }
 
