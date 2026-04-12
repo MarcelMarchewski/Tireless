@@ -9,10 +9,33 @@ import
     Animator,
     UICanvas,
     TextData,
+    AABB,
     Vector2,
     Engine,
     AudioPlayer
 } from "/source/engine/rebound.js";
+
+class TestCollider extends AABB
+{
+    constructor(gameObject, dimensions, pair)
+    {
+        super(gameObject, dimensions);
+
+        this.pair = pair;
+    }
+
+    Update()
+    {
+        if (this.pair == null) { return; }
+
+        this.CompareAgainst(this.pair);
+    }
+
+    OnCollisionDetected()
+    {
+        console.info("Collision!");
+    }
+}
 
 class PlayerController extends Component
 {
@@ -30,6 +53,7 @@ class PlayerController extends Component
         this.OnGamepadRightStick = this.OnGamepadRightStick.bind(this);
 
         this.animator = this.gameObject.GetComponent(Animator);
+        this.col = this.gameObject.GetComponent(TestCollider);
 
         this.speed = 150;
         this.dashSpeed = 400;
@@ -316,6 +340,8 @@ class Player extends GameObject
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.playerTexture, undefined, undefined, new Vector2(32, 32)));
         this.animator = this.AddComponent(Animator, this.renderer, 8, 0, false, false);
 
+        this.col = this.AddComponent(TestCollider, new Vector2(32, 32), null);
+
         this.controller = this.AddComponent(PlayerController);
     }
 }
@@ -356,5 +382,9 @@ export class Gym extends Scene
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 120);
 
         this.player = new Player(this);
+
+        this.testCol = new GameObject(this, "TestCol").AddComponent(TestCollider, new Vector2(32, 32), null);
+
+        this.player.col.pair = this.testCol;
     }
 }

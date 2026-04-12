@@ -1602,6 +1602,43 @@ export class TilemapRenderer extends SpriteRenderer
     }
 }
 
+export class AABB extends Component
+{
+    constructor(gameObject, dimensions)
+    {
+        super(gameObject);
+
+        this.dimensions = dimensions;
+    }
+
+    Base_OnCollisionDetected()
+    {
+        this.OnCollisionDetected();
+    }
+
+    OnCollisionDetected()
+    {
+
+    }
+
+    CompareAgainst(_other)
+    {
+        let _a = this.gameObject.transform;
+        let _b = _other.gameObject.transform;
+
+        if 
+        (
+            _a.position.x < _b.position.x + _other.dimensions.x * _b.scale.x &&
+            _a.position.x + this.dimensions.x * _a.scale.x > _b.position.x &&
+            _a.position.y < _b.position.y + _other.dimensions.y * _b.scale.y &&
+            _a.position.y + this.dimensions.y * _a.scale.y > _b.position.y
+        )
+        {
+            this.Base_OnCollisionDetected();
+        }
+    }
+}
+
 export class TextData
 {
     constructor(text="Text here...", font="12px serif", colour="black", alignment="center", baseline="middle", layer=Engine.I.UI_TEXT_DEFAULT_LAYER)
