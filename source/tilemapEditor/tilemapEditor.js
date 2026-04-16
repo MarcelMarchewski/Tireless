@@ -1,545 +1,305 @@
-import * as Rebound from "/source/engine/rebound.js";
-
-class InteractableBox extends Rebound.CursorBoxCollider
+import 
 {
-    constructor(gameObject, width=128, height=128, tracker=null, onClicked=null, onCursorCollideStarted=null, onCursorCollideEnded=null)
-    {
-        super(gameObject, width, height, tracker);
+    Component,
+    GameObject,
+    Scene,
+    SpriteRenderer,
+    TilemapRenderer,
+    Sprite,
+    Animator,
+    AnimationClip,
+    UICanvas,
+    TextData,
+    AABB,
+    Vector2,
+    Engine,
+    AudioPlayer
+} from "/source/engine/rebound.js";
 
-        this.OnClick = this.OnClick.bind(this);
-        this.clickTarget = onClicked;
-
-        this.onCursorCollideStarted = onCursorCollideStarted;
-        this.onCursorCollideEnded = onCursorCollideEnded;
-    }
-
-    OnClick(_event) { this.clickTarget(); }
-
-    OnCursorCollideStart()
-    {
-        Rebound.Engine.I.c.addEventListener("mousedown", this.OnClick);
-
-        if (this.onCursorCollideStarted != null)
-        {
-            this.onCursorCollideStarted();
-        }
-    }
-
-    OnCursorCollideEnd()
-    {
-        Rebound.Engine.I.c.removeEventListener("mousedown", this.OnClick);
-
-        if (this.onCursorCollideEnded != null)
-        {
-            this.onCursorCollideEnded();
-        }
-    }
-}
-
-class TextBox extends InteractableBox
+export class TileGrid extends Component
 {
-    constructor(gameObject, width=50, height=50, tracker=null, renderer=null, onEnterPressed=null)
+    constructor(gameObject, sprite, width, height)
     {
-        super(gameObject, width, height, tracker);
+        super(gameObject);
 
-        this._selected = false;
-        this._capitalised = false;
+        this.sprite = sprite;
 
-        this._textData = new Rebound.TextData(this.gameObject, "");
+        this.width = width;
+        this.height = height;
 
-        this.OnKeyDown = this.OnKeyDown.bind(this);
-        this.OnKeyUp = this.OnKeyUp.bind(this);
+        this.tileSize = sprite.sourceDimensions;
 
-        this.renderer = renderer;
-        
-        this.standardTex = new Image();
-        this.standardTex.src = "source/tilemapEditor/textures/editor/textBoxStandard.png";
-
-        this.hoverTex = new Image();
-        this.hoverTex.src = "source/tilemapEditor/textures/editor/textBoxHover.png";
-
-        this.selectedTex = new Image();
-        this.selectedTex.src = "source/tilemapEditor/textures/editor/textBoxEditing.png";
-
-        this.onEnterPressed = onEnterPressed;
-    }
-
-    OnClick(_event)
-    { 
-        if (this.renderer != null)
-        {
-            this.renderer.sprite.texture = this.selectedTex;
-        }
-
-        this._selected = true;
-    }
-
-    OnKeyDown(_event)
-    {
-        if (this._selected)
-        {
-            switch (_event.code)
-            {
-                case ("Shift"):
-                {
-                    this._capitalised = true;
-
-                    break;
-                }
-
-                case ("Enter"):
-                {
-                    if (this.onEnterPressed != null)
-                    {
-                        this.onEnterPressed();
-                    }
-
-                    break;
-                }
-
-                case ("Backspace"):
-                {
-                    this._textData.text = this._textData.text.slice(0, -1);
-
-                    break;
-                }
-
-                default:
-                {
-                    if (_event.key.length == 1)
-                    {
-                        if (!this._capitalised)
-                        {
-                            this._textData.text += _event.key;
-                        }
-
-                        else
-                        {
-                            this._textData.text += _event.key.toUpperCase();
-                        }
-                    }
-
-                    break;
-                }
-            }
-        }
-    }
-
-    OnKeyUp(_event)
-    {
-        if (this._selected)
-        {
-            switch (_event.code)
-            {
-                case ("Shift"):
-                {
-                    this._capitalised = false;
-                }
-            }
-        }
+        this.grid = [];
+        this.renderers = [];
     }
 
     Start()
     {
-        super.Start();
-
-        if (this.renderer != null)
+        for (let y = 0; y < this.height; y++)
         {
-            this.renderer.sprite.texture = this.standardTex;
+            this.grid[y] = [];
+            this.renderers[y] = [];
+
+            for (let x = 0; x < this.width; x++)
+            {
+                this.grid[y][x] = 0;
+
+                const tileGO = new GameObject(this.gameObject.scene, `Tile_${x}_${y}`);
+
+                tileGO.transform.parent = this.gameObject.transform;
+
+                const offsetX = (this.width * this.tileSize.x) / 2;
+                const offsetY = (this.height * this.tileSize.y) / 2;
+
+                tileGO.transform.localPosition = new Vector2(
+                    x * this.tileSize.x - offsetX + this.tileSize.x / 2,
+                    y * this.tileSize.y - offsetY + this.tileSize.y / 2
+                );
+
+                const sr = tileGO.AddComponent(SpriteRenderer, new Sprite(
+                    this.sprite.texture,
+                    this.sprite.layer,
+                    Vector2.zero,
+                    this.tileSize
+                ));
+
+                this.renderers[y][x] = sr;
+            }
         }
 
-        this._textData.Enqueue();
+        this.UpdateVisuals();
+    }
+
+    SetTile(x, y, index)
+    {
+        if (!this.grid[y] || this.grid[y][x] == null) return;
+
+        this.grid[y][x] = index;
+
+        const renderer = this.renderers[y][x];
+
+        // EMPTY TILE → hide sprite
+        if (index < 0)
+        {
+            renderer.enabled = false; // or renderer.gameObject.active = false (depending on engine)
+            return;
+        }
+
+        renderer.enabled = true;
+
+        const tilePos = this.GetTileUV(index);
+        renderer.sprite.sourcePosition = tilePos;
+    }
+
+    GetTileUV(index)
+    {
+        const gap = 1; // your actual gap
+
+        const tilesPerRow = Math.floor(
+            (this.sprite.texture.width + gap) / (this.tileSize.x + gap)
+        );
+
+        const xIndex = index % tilesPerRow;
+        const yIndex = Math.floor(index / tilesPerRow);
+
+        const x = xIndex * (this.tileSize.x + gap);
+        const y = yIndex * (this.tileSize.y + gap);
+
+        return new Vector2(x, y);
+    }
+
+    UpdateVisuals()
+    {
+        for (let y = 0; y < this.height; y++)
+        {
+            for (let x = 0; x < this.width; x++)
+            {
+                this.SetTile(x, y, this.grid[y][x]);
+            }
+        }
+    }
+
+    ExportToRLE()
+    {
+        const data = [];
+
+        for (let y = 0; y < this.height; y++)
+        {
+            let current = this.grid[y][0];
+            let count = 1;
+
+            for (let x = 1; x < this.width; x++)
+            {
+                const tile = this.grid[y][x];
+
+                if (tile === current)
+                {
+                    count++;
+                }
+                else
+                {
+                    data.push(`${current}x${count}`);
+                    current = tile;
+                    count = 1;
+                }
+            }
+
+            // flush row
+            data.push(`${current}x${count}`);
+
+            // row break (except last row)
+            if (y < this.height - 1)
+            {
+                data.push(`-1x1`);
+            }
+        }
+
+        return data;
+    }
+
+    ExportToJSON()
+    {
+        return JSON.stringify(this.ExportToRLE());
+    }
+}
+
+export class TilemapPainter extends Component
+{
+    constructor(gameObject, grid)
+    {
+        super(gameObject);
+
+        this.grid = grid;
+
+        this._cursorManager = Engine.I.persistentScene.cursorManager;
+
+        this._currentTile = 0;
+        this._mouseDownLeft = false;
+        this._eraseHeld = false;
+
+        this.OnMouseDown = this.OnMouseDown.bind(this);
+        this.OnMouseUp = this.OnMouseUp.bind(this);
+        this.OnScroll = this.OnScroll.bind(this);
+
+        this.OnKeyDown = this.OnKeyDown.bind(this);
+        this.OnKeyUp = this.OnKeyUp.bind(this);
+    }
+
+    Start()
+    {
+        Engine.I.c.addEventListener("mousedown", this.OnMouseDown);
+        Engine.I.c.addEventListener("mouseup", this.OnMouseUp);
+        Engine.I.c.addEventListener("wheel", this.OnScroll);
+
+        window.addEventListener("keydown", this.OnKeyDown);
+        window.addEventListener("keyup", this.OnKeyUp);
+    }
+
+    OnMouseDown(e)
+    {
+        if (e.button === 0) this._mouseDownLeft = true;
+    }
+
+    OnMouseUp(e)
+    {
+        if (e.button === 0) this._mouseDownLeft = false;
+    }
+
+    OnKeyDown(e)
+    {
+        if (e.code === "KeyE")
+        {
+            this._eraseHeld = true;
+        }
+    }
+
+    OnKeyUp(e)
+    {
+        if (e.code === "KeyE")
+        {
+            this._eraseHeld = false;
+        }
+
+        if (e.code === "KeyS") // SAVE
+        {
+            const json = this.grid.ExportToJSON();
+            console.log(json);
+        
+            navigator.clipboard.writeText(json);
+            console.log("Tilemap copied to clipboard");
+        }
+    }
+
+    OnScroll(e)
+    {
+        const maxIndex = 1000; // or derive from tileset
+
+        this._currentTile -= (e.deltaY > 0 ? 1 : -1);
+        this._currentTile = Math.max(0, Math.min(maxIndex, this._currentTile));
+
+        console.log("Tile:", this._currentTile);
     }
 
     Update()
     {
-        super.Update();
-    }
+        if (!this._mouseDownLeft && !this._eraseHeld) return;
 
-    OnEnable()
-    {
-        super.OnEnable();
+        const cursor = this._cursorManager.cursorPosition;
 
-        if (this.renderer != null)
+        const gridPos = this.grid.gameObject.transform.position;
+        const tileSize = this.grid.tileSize;
+
+        const halfWidth = (this.grid.width * tileSize.x) / 2;
+        const halfHeight = (this.grid.height * tileSize.y) / 2;
+
+        const localX = cursor.x - gridPos.x + halfWidth;
+        const localY = cursor.y - gridPos.y + halfHeight;
+
+        const x = Math.floor(localX / tileSize.x);
+        const y = Math.floor(localY / tileSize.y);
+
+        if (!this.grid.grid[y] || this.grid.grid[y][x] == null) return;
+
+        // paint
+        if (this._mouseDownLeft)
         {
-            this.renderer.sprite.texture = this.standardTex;
+            this.grid.SetTile(x, y, this._currentTile);
         }
 
-        this._textData.Enqueue();
-    }
-
-    OnDisable()
-    {
-        super.OnDisable();
-
-        if (this.renderer != null)
+        // erase (hold E)
+        if (this._eraseHeld)
         {
-            this.renderer.sprite.texture = this.standardTex;
-        }
-
-        this._textData.Deque();
-    }
-
-    OnRemove()
-    {
-        super.OnRemove();
-
-        if (this.renderer != null)
-        {
-            this.renderer.sprite.texture = this.standardTex;
-        }
-
-        this._textData.Deque();
-    }
-
-    OnCursorCollideStart()
-    {
-        super.OnCursorCollideStart();
-
-        if (this.renderer != null)
-        {
-            this.renderer.sprite.texture = this.hoverTex;
-        }
-
-        document.addEventListener("keydown", this.OnKeyDown);
-        document.addEventListener("keyup", this.OnKeyUp);
-    }
-
-    OnCursorCollideEnd()
-    {
-        super.OnCursorCollideEnd();
-
-        if (this.renderer.sprite != null)
-        {
-            this.renderer.sprite.texture = this.standardTex;
-        }
-        
-        document.removeEventListener("keydown", this.OnKeyDown);
-        document.removeEventListener("keyup", this.OnKeyUp);
-
-        this._selected = false;
-    }
-
-    get value()
-    {
-        return this._textData.text;
-    }
-}
-
-class TilePicker extends Rebound.Component
-{
-    constructor(gameObject)
-    {
-        super(gameObject);
-
-        this._tex = new Image();
-        this._tex.src = "source/tilemapEditor/textures/palette/palette.png";
-
-        this.sprite = new Rebound.Sprite(this._tex, 0, undefined, new Rebound.Vector2(16, 16));
-
-        this.OnScrollWheel = this.OnScrollWheel.bind(this);
-        this.OnKeyDown = this.OnKeyDown.bind(this);
-
-        this.tiles = [];
-
-        this._selectedIndex = 0;
-
-        this._col = Math.floor((this.sprite.texture.width + Rebound.Engine.I.SPRITE_PADDING) / (this.sprite.sourceDimensions.x + Rebound.Engine.I.SPRITE_PADDING));
-        this._row = Math.floor((this.sprite.texture.height + Rebound.Engine.I.SPRITE_PADDING) / (this.sprite.sourceDimensions.y + Rebound.Engine.I.SPRITE_PADDING));
-
-        this._frameCount = this._col * this._row;
-
-        this._hoveredSlot = null;
-    }
-
-    Start()
-    {
-        Rebound.Engine.I.c.addEventListener("wheel", this.OnScrollWheel);
-        
-        document.addEventListener("keydown", this.OnKeyDown);
-    }
-
-    OnScrollWheel(_event)
-    {
-        if (_event.deltaY > 0)
-        {
-            this._selectedIndex--;
-
-            if (this._selectedIndex < 0)
-            {
-                this._selectedIndex = this._frameCount - 1;
-            }
-        }
-
-        else if (_event.deltaY < 0)
-        {
-            this._selectedIndex++;
-
-            if (this._selectedIndex > this._frameCount - 1)
-            {
-                this._selectedIndex = 0;
-            }
-        }
-
-        if (this._hoveredSlot != null)
-        {
-            this._hoveredSlot.renderer.sprite = this.currentSprite;
-        }
-    }
-
-    OnKeyDown(_event)
-    {
-        switch (_event.code)
-        {
-            case ("KeyK"):
-            {
-                this.Export();
-
-                break;
-            }
-        }
-    }
-
-    Export()
-    {
-        let _data = [];
-
-        let _currentCommand = null;
-        let _currentCommandCounter = 0;
-
-        for (let i = 0; i < this.tiles.length; i++)
-        {
-            const _tileCommand = this.tiles[i]._spriteIndex;
-
-            if (_tileCommand == -1)
-            {
-                if (_currentCommand != null)
-                {
-                    _data.push(String(_currentCommand) + "x" + String(_currentCommandCounter));
-
-                    _currentCommand = null;
-                    _currentCommandCounter = 0;
-                }
-
-                _data.push("-1x1");
-                continue;
-            }
-
-            if (_tileCommand == _currentCommand)
-            {
-                _currentCommandCounter++;
-            }
-
-            else
-            {
-                if (_currentCommand != null)
-                {
-                    _data.push(String(_currentCommand) + "x" + String(_currentCommandCounter));
-                }
-
-                _currentCommand = _tileCommand;
-                _currentCommandCounter = 1;
-            }
-        }
-
-        if (_currentCommand != null)
-        {
-            _data.push(String(_currentCommand) + "x" + String(_currentCommandCounter));
-        }
-
-        const _date = new Date();
-
-        console.info("Exporting tilemap data at " + _date.getHours() + ":" + _date.getMinutes() + ":" + _date.getSeconds() + " on " + _date.getDay() + "/" + _date.getMonth() + 1 + "/" + _date.getFullYear());
-        console.info(JSON.stringify(_data));
-    }
-
-    get currentSprite()
-    {
-        return new Rebound.Sprite(this._tex, 0, new Rebound.Vector2((this._selectedIndex % this._col) * (this.sprite.sourceDimensions.x + Rebound.Engine.I.SPRITE_PADDING), Math.floor(this._selectedIndex / this._col) * (this.sprite.sourceDimensions.y + Rebound.Engine.I.SPRITE_PADDING)), new Rebound.Vector2(this.sprite.sourceDimensions.x, this.sprite.sourceDimensions.y));
-    }
-
-    get currentSpriteIndex()
-    {
-        return this._selectedIndex;
-    }
-}
-
-class TileSlot extends Rebound.GameObject
-{
-    constructor(scene, name="TileSlot", parent=null, scale=8)
-    {
-        super(scene, name, parent);
-
-        this.OnClicked = this.OnClicked.bind(this);
-        this.OnKeyDown = this.OnKeyDown.bind(this);
-
-        this.OnCursorCollideStarted = this.OnCursorCollideStarted.bind(this);
-        this.OnCursorCollideEnded = this.OnCursorCollideEnded.bind(this);
-
-        this.interactionManager = this.AddComponent(InteractableBox, scale * 2, scale * 2, undefined, this.OnClicked, this.OnCursorCollideStarted, this.OnCursorCollideEnded);
-
-        this._defaultTex = new Image();
-        this._defaultTex.src = "source/tilemapEditor/textures/editor/tileEmpty.png";
-
-        this._hoverTex = new Image();
-        this._hoverTex.src = "source/tilemapEditor/textures/editor/tileHover.png";
-
-        this._defaultSprite = new Rebound.Sprite(this._defaultTex, undefined, undefined, new Rebound.Vector2(16, 16));
-        this._hoverSprite = new Rebound.Sprite(this._hoverTex);
-
-        this.renderer = this.AddComponent(Rebound.SpriteRenderer, this._defaultSprite);
-
-        this.tilePicker = this.transform.parent.gameObject.GetComponent(TilePicker);
-
-        this._spriteIndex = -2;
-
-        document.addEventListener("keydown", this.OnKeyDown);
-    }
-
-    OnClicked()
-    {
-        this._defaultSprite = this.tilePicker.currentSprite;
-
-        this._spriteIndex = this.tilePicker.currentSpriteIndex;
-    }
-
-    OnKeyDown(_event)
-    {
-        if (this.tilePicker._hoveredSlot != this) { return; }
-
-        switch (_event.code)
-        {
-            case ("KeyE"):
-            {
-                this._defaultSprite = new Rebound.Sprite(this._defaultTex, undefined, undefined, new Rebound.Vector2(16, 16));
-
-                this._spriteIndex = -2;
-
-                break;
-            }
-        }
-    }
-
-    OnCursorCollideStarted()
-    {
-        this.tilePicker._hoveredSlot = this;
-        this.renderer.sprite = this.tilePicker.currentSprite;
-    }
-
-    OnCursorCollideEnded()
-    {
-        if (this.tilePicker._hoveredSlot == this)
-        {
-            this.tilePicker._hoveredSlot = null;
-        }
-
-        this.renderer.sprite = this._defaultSprite;
-    }
-}
-
-class LineBreakTileSlot
-{
-    constructor()
-    {
-        this._spriteIndex = -1;
-    }
-}
-
-class TilemapEditor extends Rebound.Scene
-{
-    constructor()
-    {
-        super();
-    }
-
-    Start()
-    {
-        this.background = new Rebound.GameObject(this, "Background");
-        this.background.transform.localPosition = new Rebound.Vector2(128, 184);
-        this.background.transform.localScale = new Rebound.Vector2(256, 386);
-
-        this.backgroundTex = new Image();
-        this.backgroundTex.src = "source/tilemapEditor/textures/editor/tilemapEditorBackground.png";
-
-        this.backgroundSprite = new Rebound.Sprite(this.backgroundTex);
-
-        this.backgroundRenderer = this.background.AddComponent(Rebound.SpriteRenderer, this.backgroundSprite);
-
-        this.resolutionManager = new Rebound.GameObject(this, "ResolutionManager");
-
-        this.resolutionManager.transform.localPosition = new Rebound.Vector2(20, 348);
-
-        this.resolutionRendererObject = new Rebound.GameObject(this, "Renderer", this.resolutionManager.transform);
-        this.resolutionRendererObject.transform.localScale = new Rebound.Vector2(5, 5);
-        this.textBoxObject = new Rebound.GameObject(this, "TextBox", this.resolutionManager.transform);
-
-        this._tex = new Image();
-        this._tex.src = "source/tilemapEditor/textures/editor/textBoxStandard.png";
-
-        this._sprite = new Rebound.Sprite(this._tex);
-
-        this.resolutionRenderer = this.resolutionRendererObject.AddComponent(Rebound.SpriteRenderer, this._sprite);
-
-        this.OnEnterPressed = this.OnEnterPressed.bind(this);
-
-        this.resolutionTextBox = this.textBoxObject.AddComponent(TextBox, 100, 100, null, this.resolutionRenderer, this.OnEnterPressed);
-
-        this.tileManager = new Rebound.GameObject(this, "TileManager");
-
-        this.tilePicker = this.tileManager.AddComponent(TilePicker);
-    }
-
-    OnEnterPressed()
-    {
-        const _resolution = parseInt(this.resolutionTextBox.value);
-
-        if (Number.isNaN(_resolution)) { return; }
-
-        this.tileManager.tiles = [];
-
-        const _col = 256 / _resolution;
-        const _row = 240 / _resolution;
-
-        for (let y = 0; y < _row; y++)
-        {
-            for (let x = 0; x < _col; x++)
-            {
-                const _tile = new TileSlot(this, undefined, this.tileManager.transform, _resolution / 2);
-
-                _tile.transform.localPosition = new Rebound.Vector2(_resolution / 2 + x * _resolution, 232 - y * _resolution);
-
-                this.tilePicker.tiles.push(_tile);
-            }
-
-            if (y != _row - 1)
-            {
-                this.tilePicker.tiles.push(new LineBreakTileSlot());
-            }
+            this.grid.SetTile(x, y, -1);
         }
     }
 }
 
-class TilemapViewer extends Rebound.Scene
+class TilemapEditor extends Scene
 {
     constructor()
     {
         super();
 
-        this.renderer = new Rebound.GameObject(this, "Tilemap Viewer");
+        this.backgroundTexture = new Image();
+        this.backgroundTexture.src = "source/tilemapEditor/textures/palette/palette.png";
 
-        const _tex = new Image();
-        _tex.src = "source/tilemapEditor/textures/palette/palette.png";
-
-        const _spriteSheet = new Rebound.Sprite(_tex, undefined, undefined, new Rebound.Vector2(16, 16));
-
-        this.renderer.transform.localPosition = new Rebound.Vector2(128, 120);
-
-        this.renderer.AddComponent(Rebound.TilemapRenderer, _spriteSheet, "source/tilemapEditor/data/out.json");
+        this.grid = new GameObject(this, "Grid").AddComponent(TileGrid, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), 8, 8);
+        this.grid.gameObject.transform.localPosition = new Vector2(
+        Engine.I.width / 2,
+        Engine.I.height / 2
+        );
+        this.painter = this.root.AddComponent(TilemapPainter, this.grid);
     }
 }
 
-const _e = new Rebound.Engine(256, 368, new Rebound.Vector2(2, 2));
 
-const _s = new TilemapViewer();
+const _baseWidth = 256;
+const _baseHeight = 256;
 
-Rebound.Engine.I.AddToScenes(_s);
+const _scale = Math.floor(Math.min(window.innerWidth / _baseWidth, window.innerHeight / _baseHeight));
+
+new Engine(256, 256, new Vector2(_scale, _scale), false, "10px solid white");
+
+const _s = new TilemapEditor();
+
+Engine.I.LoadScene(_s);

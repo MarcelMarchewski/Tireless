@@ -9,6 +9,7 @@ import
     Animator,
     AnimationClip,
     UICanvas,
+    Timer,
     TextRenderer,
     TextData,
     Vector2,
@@ -21,60 +22,31 @@ import
     MainMenu
 } from "/source/tireless/mainMenu.js";
 
-class SceneSwapTimer extends Component
+class SceneSwapTimer extends Timer
 {
     constructor(gameObject)
     {
-        super(gameObject);
-
-        this.timeLeft = 1;
-
-        this.running = false;
+        super(gameObject, 1, false, true);
     }
 
-    Update()
-    {
-        if (this.running)
-        {
-            this.timeLeft -= Engine.I.deltaTime;
-        }
-
-        if (this.timeLeft <= 0)
-        {
-            this.Base_Destroy();
-        }
-    }
-
-    OnDestroy()
+    OnTimerUp()
     {
         this.gameObject.scene.SwapToMain();
     }
 }
 
-class RunTimer extends Component
+class RunTimer extends Timer
 {
     constructor(gameObject)
     {
-        super(gameObject);
-
-        this.timeLeft = 3;
+        super(gameObject, 3, true, true);
     }
 
-    Update()
-    {
-        this.timeLeft -= Engine.I.deltaTime;
-
-        if (this.timeLeft <= 0)
-        {
-            this.Base_Destroy();
-        }
-    }
-
-    OnDestroy()
+    OnTimerUp()
     {
         this.gameObject.scene.logo.animator.Play();
 
-        this.gameObject.GetComponent(SceneSwapTimer).running = true;
+        this.gameObject.GetComponent(SceneSwapTimer).Play();
     }
 }
 
@@ -107,7 +79,7 @@ export class SplashScreen extends Scene
         this.background = new BasicSprite(this, this.backgroundTexture, 1, Vector2.one, "Background");
 
         this.background.transform.localPosition = new Vector2(128, 120);
-        this.background.transform.scale = new Vector2(256, 240);
+        this.background.transform.scale = new Vector2(256, 256);
 
         this.logo = new BasicSprite(this, this.logoTexture, 5, new Vector2(48, 48), "Logo");
 

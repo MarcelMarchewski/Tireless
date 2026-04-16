@@ -16,25 +16,16 @@ import
     AudioPlayer
 } from "/source/engine/rebound.js";
 
-class TestCollider extends AABB
+class PlayerCollider extends AABB
 {
-    constructor(gameObject, dimensions, pair)
+    constructor(gameObject)
     {
-        super(gameObject, dimensions);
-
-        this.pair = pair;
+        super(gameObject, new Vector2(32, 32));
     }
 
-    Update()
+    OnCollisionDetected(_other)
     {
-        if (this.pair == null) { return; }
-
-        this.CompareAgainst(this.pair);
-    }
-
-    OnCollisionDetected()
-    {
-        console.info("Collision!");
+        
     }
 }
 
@@ -54,7 +45,7 @@ class PlayerController extends Component
         this.OnGamepadRightStick = this.OnGamepadRightStick.bind(this);
 
         this.animator = this.gameObject.GetComponent(Animator);
-        this.col = this.gameObject.GetComponent(TestCollider);
+        this.col = this.gameObject.GetComponent(PlayerCollider);
 
         this.speed = 150;
         this.dashSpeed = 400;
@@ -146,6 +137,8 @@ class PlayerController extends Component
         }
 
         this.UpdateAnimator();
+
+        this.gameObject.scene.colliderManager.Compare(this.col);
     }
 
     OnKeyDown(_event)
@@ -333,7 +326,7 @@ class Player extends GameObject
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.playerTexture, undefined, undefined, new Vector2(32, 32)));
         this.animator = this.AddComponent(Animator, this.renderer, 8, [this.scene.fixedAnimationClip]);
 
-        this.col = this.AddComponent(TestCollider, new Vector2(32, 32), null);
+        this.col = this.AddComponent(PlayerCollider);
 
         this.controller = this.AddComponent(PlayerController);
     }
@@ -378,8 +371,6 @@ export class Gym extends Scene
 
         this.player = new Player(this);
 
-        this.testCol = new GameObject(this, "TestCol").AddComponent(TestCollider, new Vector2(32, 32), null);
-
-        this.player.col.pair = this.testCol;
+        this.testCol = new GameObject(this, "TestCol").AddComponent(AABB, new Vector2(32, 32));
     }
 }

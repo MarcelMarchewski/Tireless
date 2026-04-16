@@ -1646,14 +1646,53 @@ export class AABB extends Component
         super(gameObject);
 
         this.dimensions = dimensions;
+
+        this._registered = false;
     }
 
-    Base_OnCollisionDetected()
+    Start()
     {
-        this.OnCollisionDetected();
+        this.gameObject.scene.colliderManager.AddCollider(this);
+
+        this._registered = true;
     }
 
-    OnCollisionDetected()
+    OnEnable()
+    {
+        if (!this._registered)
+        {
+            this.gameObject.scene.colliderManager.AddCollider(this);
+
+            this._registered = true;
+        }
+    }
+
+    OnDisable()
+    {
+        if (this._registered)
+        {
+            this.gameObject.scene.colliderManager.RemoveCollider(this);
+
+            this._registered = false;
+        }
+    }
+
+    OnDestroy()
+    {
+        if (this._registered)
+        {
+            this.gameObject.scene.colliderManager.RemoveCollider(this);
+
+            this._registered = false;
+        }
+    }
+
+    Base_OnCollisionDetected(_other)
+    {
+        this.OnCollisionDetected(_other);
+    }
+
+    OnCollisionDetected(_other)
     {
 
     }
@@ -1671,7 +1710,44 @@ export class AABB extends Component
             _a.position.y + this.dimensions.y * _a.scale.y > _b.position.y
         )
         {
-            this.Base_OnCollisionDetected();
+            this.Base_OnCollisionDetected(_other);
+
+            _other.Base_OnCollisionDetected(this);
+        }
+    }
+}
+
+class ColliderManager extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+
+        this._colliders = [];
+    }
+
+    AddCollider(_col)
+    {
+        this._colliders.push(_col);
+    }
+
+    RemoveCollider(_targetCol)
+    {
+        const _index = this._colliders.findIndex((_col) => _col === _targetCol)
+
+        if (_index != -1)
+        {
+            this._colliders.splice(_index, 1);
+        }
+    }
+
+    Compare(_targetCol)
+    {
+        for (let i = 0; i < this._colliders.length; i++)
+        {
+            if (this._colliders[i] == _targetCol) { continue; }
+
+            _targetCol.CompareAgainst(this._colliders[i]);
         }
     }
 }
@@ -2550,11 +2626,75 @@ export class UICanvas extends Component
     }
 }
 
+export class Timer extends Component
+{
+    constructor(gameObject, startValue, autoPlay=false, destructive=true)
+    {
+        super(gameObject);
+
+        this._currentValue = startValue;
+        this._maxValue = startValue;
+        
+        this._running = autoPlay;
+
+        this._destructive = destructive;
+    }
+
+    Update()
+    {
+        if (this._running)
+        {
+            this._currentValue -= Engine.I.deltaTime;
+
+            if (this._currentValue <= 0)
+            {
+                this.Base_OnTimerUp();
+            }
+        }
+    }
+
+    Play()
+    {
+        this._running = true;
+    }
+
+    Pause()
+    {
+        this._running = false;
+    }
+
+    Stop()
+    {
+        this.Pause();
+
+        this._currentValue = this._maxValue;
+    }
+
+    Base_OnTimerUp()
+    {
+        this.Stop();
+
+        this.OnTimerUp();
+
+        if (this.destructive)
+        {
+            this.Base_Destroy();
+        }
+    }
+
+    OnTimerUp()
+    {
+
+    }
+}
+
 export class Scene
 {
     constructor()
     {
         this.root = new GameObject(this, "Scene Root", null);
+
+        this.colliderManager = this.root.AddComponent(ColliderManager);
 
         this._initialised = false;
     }
@@ -2683,7 +2823,13 @@ export class Engine
                     _event.preventDefault();
                 }
             }
-        )
+        );
+
+        document.addEventListener("contextmenu", (_event) =>
+            {
+                _event.preventDefault();
+            }
+        );
 
         this._scenes.push(this.persistentScene);
 
