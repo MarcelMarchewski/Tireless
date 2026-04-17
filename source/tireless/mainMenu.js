@@ -331,7 +331,7 @@ export class MainMenu extends Scene
     Start()
     {
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(SpriteRenderer, new Sprite(this.backgroundTexture, 0));
-        this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 120);
+        this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.settingsMenuCanvas = new SettingsMenuCanvas(this);
         this.settingsMenuCanvas.enabled = false;

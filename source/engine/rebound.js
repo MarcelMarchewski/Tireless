@@ -131,6 +131,11 @@ export class Vector2
     {
         return Math.atan2(_b.y - _a.y, _b.x - _a.x) * 180 / Math.PI;
     }
+
+    static Distance(_a, _b)
+    {
+        return Math.hypot(_b.x - _a.x, _b.y - _a.y);
+    }
 }
 
 export class Transform
@@ -1646,6 +1651,7 @@ export class AABB extends Component
         super(gameObject);
 
         this.dimensions = dimensions;
+        this.ignoreTypes = [];
 
         this._registered = false;
     }
@@ -1699,19 +1705,18 @@ export class AABB extends Component
 
     CompareAgainst(_other)
     {
-        let _a = this.gameObject.transform;
-        let _b = _other.gameObject.transform;
+        const _aPos = this.gameObject.transform.position;
+        const _bPos = _other.gameObject.transform.position;
 
-        if 
-        (
-            _a.position.x < _b.position.x + _other.dimensions.x * _b.scale.x &&
-            _a.position.x + this.dimensions.x * _a.scale.x > _b.position.x &&
-            _a.position.y < _b.position.y + _other.dimensions.y * _b.scale.y &&
-            _a.position.y + this.dimensions.y * _a.scale.y > _b.position.y
+        const _aDim = new Vector2((this.dimensions.x * this.gameObject.transform.scale.x) / 2, (this.dimensions.y * this.gameObject.transform.scale.y) / 2);
+        const _bDim = new Vector2((_other.dimensions.x * _other.gameObject.transform.scale.x) / 2, (_other.dimensions.y * _other.gameObject.transform.scale.y) / 2);
+
+        if (
+            Math.abs(_aPos.x - _bPos.x) < (_aDim.x + _bDim.x) &&
+            Math.abs(_aPos.y - _bPos.y) < (_aDim.y + _bDim.y)
         )
         {
             this.Base_OnCollisionDetected(_other);
-
             _other.Base_OnCollisionDetected(this);
         }
     }
@@ -1747,8 +1752,58 @@ class ColliderManager extends Component
         {
             if (this._colliders[i] == _targetCol) { continue; }
 
+            let _ignored = false;
+
+            for (let j = 0; j < _targetCol.ignoreTypes.length; j++)
+            {
+                if (this._colliders[i] instanceof _targetCol.ignoreTypes[j]) { _ignored = true; break; }
+            }
+
+            if (_ignored) { continue; }
+
             _targetCol.CompareAgainst(this._colliders[i]);
         }
+    }
+
+    PointInAABB(_point, _col)
+    {
+        const _colPos = _col.gameObject.transform.position;
+
+        return (
+            _point.x >= _colPos.x - _col.dimensions.x / 2 &&
+            _point.x <= _colPos.x + _col.dimensions.x / 2 &&
+            _point.y >= _colPos.y - _col.dimensions.y / 2 &&
+            _point.y <= _colPos.y + _col.dimensions.y / 2
+        );
+    }
+
+    Raycast(_origin, _direction, _maxDistance, _step=1, _ignoreTypes=[])
+    {
+        const _dir = _direction.normalised;
+
+        for (let i = 0; i <= _maxDistance; i += _step)
+        {
+            const _point = Vector2.Add(_origin, Vector2.Multiply(_dir, new Vector2(i, i)));
+
+            for (let j = 0; j < this._colliders.length; j++)
+            {
+                let _ignored = false;
+
+                for (let k = 0; k < _ignoreTypes.length; k++)
+                {
+                    if (this._colliders[j] instanceof _ignoreTypes[k]) { _ignored = true; break; }
+                }
+
+                if (_ignored) { continue; }
+
+                if (this.PointInAABB(_point, this._colliders[j]))
+                {
+                    return _point;
+                }
+            }
+        }
+
+        return Vector2.Add(_origin, Vector2.Multiply(_dir, new Vector2(_maxDistance, _maxDistance)));
     }
 }
 

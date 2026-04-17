@@ -78,12 +78,12 @@ export class SplashScreen extends Scene
     {
         this.background = new BasicSprite(this, this.backgroundTexture, 1, Vector2.one, "Background");
 
-        this.background.transform.localPosition = new Vector2(128, 120);
+        this.background.transform.localPosition = new Vector2(128, 128);
         this.background.transform.scale = new Vector2(256, 256);
 
         this.logo = new BasicSprite(this, this.logoTexture, 5, new Vector2(48, 48), "Logo");
 
-        this.logo.transform.localPosition = new Vector2(128, 120);
+        this.logo.transform.localPosition = new Vector2(128, 128);
         this.logo.transform.scale = new Vector2(3, 3);
 
         this.runTimer = this.root.AddComponent(RunTimer);

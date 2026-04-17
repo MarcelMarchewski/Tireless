@@ -16,16 +16,49 @@ import
     AudioPlayer
 } from "/source/engine/rebound.js";
 
+class WorldCollider extends AABB
+{
+    constructor(gameObject, dimensions)
+    {
+        super(gameObject, dimensions);
+    }
+}
+
 class PlayerCollider extends AABB
 {
-    constructor(gameObject)
+    constructor(gameObject, dimensions=new Vector2(32, 26))
     {
-        super(gameObject, new Vector2(32, 32));
+        super(gameObject, dimensions);
+
+        this.epsilon = 1;
+    }
+
+    Update()
+    {
+        this.gameObject.scene.colliderManager.Compare(this);
     }
 
     OnCollisionDetected(_other)
     {
-        
+        const _delta = new Vector2(
+            _other.gameObject.transform.position.x - this.gameObject.transform.position.x,
+            _other.gameObject.transform.position.y - this.gameObject.transform.position.y
+        )
+
+        const _penDepth = new Vector2(
+            (this.dimensions.x / 2 + _other.dimensions.x / 2) - Math.abs(_delta.x), 
+            (this.dimensions.y / 2 + _other.dimensions.y / 2) - Math.abs(_delta.y)
+        );
+
+        if (_penDepth.x < _penDepth.y)
+        {
+            this.gameObject.transform.localPosition.x -= (_penDepth.x + this.epsilon) * Math.sign(_delta.x);
+        }
+
+        else
+        {
+            this.gameObject.transform.localPosition.y -= (_penDepth.y + this.epsilon) * Math.sign(_delta.y);
+        }
     }
 }
 
@@ -61,8 +94,6 @@ class PlayerController extends Component
         this.dashCursor.enabled = false;
 
         this.dashing = false;
-
-        this._wasDashing = false;
     }
 
     Start()
@@ -83,11 +114,14 @@ class PlayerController extends Component
         {
             this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
 
+            let _direction;
+
             if (Engine.I.persistentScene.inputManager.inputMode == 0)
             {
                 const _mousePos = Engine.I.persistentScene.cursorManager.cursorPosition;
 
                 this.dashCursor.transform.localRotation = Vector2.DegreeAngle(this.gameObject.transform.position, _mousePos) - 90;
+                _direction = Vector2.Subtract(_mousePos, this.gameObject.transform.position);
             }
 
             else
@@ -97,12 +131,24 @@ class PlayerController extends Component
                 if (this.rightJoystickInput.magnitude < 0.1)
                 {
                     this.dashCursor.transform.localRotation = this.directionDegrees - 90;
+                    _direction = Vector2.zero;
                 }
 
                 else
                 {
                     this.dashCursor.transform.localRotation = Vector2.DegreeAngle(this.gameObject.transform.position, _joystickPos) - 90;
+                    _direction = this.rightJoystickInput;
                 }
+            }
+
+            if (_direction.magnitude > 0)
+            {
+                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 80, 2, [PlayerCollider]);
+
+                const _safeHit = Vector2.Subtract(_hit, Vector2.Multiply(_direction.normalised, new Vector2(4, 4)));
+
+                this.dashCursor.pivot.transform.position = _safeHit;
+                this.dashCursor.pivot.transform.localPosition.Subtract(new Vector2(0, 16));
             }
         }
 
@@ -129,7 +175,6 @@ class PlayerController extends Component
                 this.dashCursor.transform.parent = this.gameObject.transform;
                 this.dashCursor.transform.localPosition = Vector2.zero;
 
-                this._wasDashing = true;
                 this.dashing = false;
 
                 this.dashCursor.enabled = false;
@@ -137,8 +182,6 @@ class PlayerController extends Component
         }
 
         this.UpdateAnimator();
-
-        this.gameObject.scene.colliderManager.Compare(this.col);
     }
 
     OnKeyDown(_event)
@@ -222,9 +265,22 @@ class PlayerController extends Component
 
             case ("Space"):
             {
-                this.dashCursor.animator.JumpToFrame(1);
+                if (!this.dashing)
+                {
+                    this.dashCursor.animator.JumpToFrame(1);
 
-                this.dashing = true;
+                    this.dashing = true;
+                }
+
+                else
+                {
+                    this.dashCursor.transform.parent = this.gameObject.transform;
+                    this.dashCursor.transform.localPosition = Vector2.zero;
+
+                    this.dashing = false;
+
+                    this.dashCursor.enabled = false;
+                }
 
                 break;
             }
@@ -286,7 +342,7 @@ class PlayerController extends Component
         let _x;
         let _y;
 
-        const _direction = Vector2.Subtract(this.dashCursor.pivot.transform.position, this.gameObject.transform.position);
+        const _direction = Vector2.Subtract(this.dashCursor.safePivot.transform.position, this.gameObject.transform.position);
 
         _x = _direction.x;
         _y = _direction.y;
@@ -339,7 +395,9 @@ class DashCursor extends GameObject
         super(scene, name, parent);
 
         this.pivot = new GameObject(this.scene, "Pivot", this.transform);
-        this.pivot.transform.localPosition.Add(new Vector2(0, 64));
+
+        this.safePivot = new GameObject(this.scene, "SavePivot", this.transform);
+        this.safePivot.transform.localPosition = new Vector2(0, 64);
 
         this.renderer = this.pivot.AddComponent(SpriteRenderer, new Sprite(this.scene.dashCursorTexture, undefined, undefined, new Vector2(16, 16)));
         this.animator = this.pivot.AddComponent(Animator, this.renderer, 2, [this.scene.fixedAnimationClip]);
@@ -367,10 +425,15 @@ export class Gym extends Scene
     Start()
     {
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(16, 16)), "source/tireless/resources/data/tilemaps/gym.json");
-        this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 120);
+        this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.player = new Player(this);
 
-        this.testCol = new GameObject(this, "TestCol").AddComponent(AABB, new Vector2(32, 32));
+        this.testCol = new GameObject(this, "TestCol").AddComponent(WorldCollider, new Vector2(32, 32));
+
+        this.testCol.renderer = new GameObject(this, "Renderer", this.testCol.gameObject.transform).AddComponent(SpriteRenderer, new Sprite(Engine.I.missingTexture, undefined, undefined, new Vector2(2, 2)));
+        this.testCol.renderer.gameObject.transform.scale = new Vector2(16, 16);
+
+        this.testCol.gameObject.transform.position = new Vector2(128, 128);
     }
 }
