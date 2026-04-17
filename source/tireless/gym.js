@@ -26,7 +26,7 @@ class WorldCollider extends AABB
 
 class PlayerCollider extends AABB
 {
-    constructor(gameObject, dimensions=new Vector2(32, 26))
+    constructor(gameObject, dimensions=new Vector2(26, 26))
     {
         super(gameObject, dimensions);
 
@@ -148,7 +148,7 @@ class PlayerController extends Component
                 const _safeHit = Vector2.Subtract(_hit, Vector2.Multiply(_direction.normalised, new Vector2(4, 4)));
 
                 this.dashCursor.pivot.transform.position = _safeHit;
-                this.dashCursor.pivot.transform.localPosition.Subtract(new Vector2(0, 16));
+                this.dashCursor.pivot.transform.localPosition.Subtract(new Vector2(0, 10));
             }
         }
 
