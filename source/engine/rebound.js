@@ -1351,7 +1351,7 @@ export class AudioPlayer extends Component
 
 export class AnimationClip
 {
-    constructor(name, startFrame, endFrame, frameDuration=0.1, loop=true, autoplay=true)
+    constructor(name, startFrame, endFrame, frameDuration=0.1, loop=true, autoplay=true, onComplete=() => {})
     {
         this.name = name;
 
@@ -1362,6 +1362,8 @@ export class AnimationClip
 
         this.loop = loop;
         this.autoplay = autoplay;
+
+        this.onComplete = onComplete;
     }
 }
 
@@ -1377,6 +1379,7 @@ export class Animator extends Component
 
         this._timer = 0;
         this._playing = false;
+        this._reversing = false;
 
         this._frames = [];
 
@@ -1428,6 +1431,16 @@ export class Animator extends Component
         this._playing = true;
     }
 
+    Reverse()
+    {
+        this._reversing = true;
+    }
+
+    Forward()
+    {
+        this._reversing = false;
+    }
+
     Pause()
     {
         this._timer = 0;
@@ -1454,7 +1467,16 @@ export class Animator extends Component
             {
                 this._currentClip = this._clips[i];
 
-                this.JumpToFrame(this._currentClip.startFrame);
+                if (!this._reversing)
+                {
+                    this.JumpToFrame(this._currentClip.startFrame);
+                }
+
+                else
+                {
+                    this.JumpToFrame(this._currentClip.endFrame);
+                }
+                
                 this.Play();
             }
         }
@@ -1464,7 +1486,7 @@ export class Animator extends Component
     {
         if (this._frames.length == 0) { return; }
 
-        if (this._currentFrame >= this._currentClip.endFrame)
+        if (this._currentFrame >= this._currentClip.endFrame && !this._reversing)
         {
             if (this._currentClip.loop)
             {
@@ -1477,6 +1499,25 @@ export class Animator extends Component
 
                 this.Pause();
             }
+
+            this._currentClip.onComplete();
+        }
+
+        else if (this._currentFrame <= this._currentClip.startFrame && this._reversing)
+        {
+            if (this._currentClip.loop)
+            {
+                this._currentFrame = this._currentClip.endFrame;
+            }
+
+            else
+            {
+                this._currentFrame = this._currentClip.startFrame;
+
+                this.Pause();
+            }
+
+            this._currentClip.onComplete();
         }
 
         this.spriteRenderer.sprite.sourcePosition = this._frames[this._currentFrame];
@@ -1491,7 +1532,9 @@ export class Animator extends Component
 
     NextFrame()
     {
-        this._currentFrame++;
+        if (!this._reversing) { this._currentFrame++; }
+
+        else { this._currentFrame--; }
 
         this.Internal_RunFrameWithLoopCheck();
     }
@@ -1537,6 +1580,16 @@ export class Animator extends Component
                 y += this.spriteRenderer.sprite.sourceDimensions.y + Engine.I.SPRITE_PADDING;
             }
         }
+    }
+
+    get currentClip()
+    {
+        return this._currentClip;
+    }
+
+    get currentFrame()
+    {
+        return this._currentFrame;
     }
 }
 
@@ -1833,6 +1886,9 @@ export class InputManager extends Component
 
         this.OnCursorPositionUpdate = this.OnCursorPositionUpdate.bind(this);
 
+        this.OnMouseDown = this.OnMouseDown.bind(this);
+        this.OnMouseUp = this.OnMouseUp.bind(this);
+
         this.OnKeyDown = this.OnKeyDown.bind(this);
         this.OnKeyUp = this.OnKeyUp.bind(this);
 
@@ -1840,6 +1896,9 @@ export class InputManager extends Component
         this.OnGamepadDisconnected = this.OnGamepadDisconnected.bind(this);
 
         this.STICK_THRESHOLD = 0.01;
+
+        this._mdListeners = [];
+        this._muListeners = [];
 
         this._kdListeners = [];
         this._kuListeners = [];
@@ -1863,6 +1922,9 @@ export class InputManager extends Component
         if (!this._bound)
         {
             Engine.I.persistentScene.cursorManager.AddCursorPositionListener(this.OnCursorPositionUpdate);
+
+            document.addEventListener("mousedown", this.OnMouseDown);
+            document.addEventListener("mouseup", this.OnMouseUp);
 
             document.addEventListener("keydown", this.OnKeyDown);
             document.addEventListener("keyup", this.OnKeyUp);
@@ -1932,6 +1994,9 @@ export class InputManager extends Component
     {
         if (!this._bound)
         {
+            document.addEventListener("mousedown", this.OnMouseDown);
+            document.addEventListener("mouseup", this.OnMouseUp);
+
             document.addEventListener("keydown", this.OnKeyDown);
             document.addEventListener("keyup", this.OnKeyUp);
 
@@ -1946,6 +2011,9 @@ export class InputManager extends Component
     {
         if (this._bound)
         {
+            document.removeEventListener("mousedown", this.OnMouseDown);
+            document.removeEventListener("mouseup", this.OnMouseUp);
+
             document.removeEventListener("keydown", this.OnKeyDown);
             document.removeEventListener("keyup", this.OnKeyUp);
 
@@ -1960,6 +2028,9 @@ export class InputManager extends Component
     {
         if (this._bound)
         {
+            document.removeEventListener("mousedown", this.OnMouseDown);
+            document.removeEventListener("mouseup", this.OnMouseUp);
+
             document.removeEventListener("keydown", this.OnKeyDown);
             document.removeEventListener("keyup", this.OnKeyUp);
 
@@ -1973,6 +2044,24 @@ export class InputManager extends Component
     OnCursorPositionUpdate()
     {
         this.inputMode = 0;
+    }
+
+    OnMouseDown(_event)
+    {
+        this.inputMode = 0;
+
+        for (let i = 0; i < this._mdListeners.length; i++)
+        {
+            this._mdListeners[i](_event);
+        }
+    }
+
+    OnMouseUp(_event)
+    {
+        for (let i = 0; i < this._muListeners.length; i++)
+        {
+            this._muListeners[i](_event);
+        }
     }
 
     OnKeyDown(_event)
@@ -2043,6 +2132,34 @@ export class InputManager extends Component
         if (_event.gamepad.index != this._currentGamepadIndex) { return; }
 
         this._currentGamepadIndex = null;
+    }
+
+    AddMouseDownListener(_listener)
+    {
+        this._mdListeners.push(_listener);
+    }
+
+    RemoveMouseDownListener(_listener)
+    {
+        const _mdListenerIndex = this._mdListeners.indexOf(_listener);
+
+        if (_mdListenerIndex == -1) { return; }
+
+        this._mdListeners.splice(_mdListenerIndex, 1);
+    }
+
+    AddMouseUpListener(_listener)
+    {
+        this._muListeners.push(_listener);
+    }
+
+    RemoveMouseUpListener(_listener)
+    {
+        const _muListenerIndex = this._muListeners.indexOf(_listener);
+
+        if (_muListenerIndex == -1) { return; }
+
+        this._muListeners.splice(_muListenerIndex, 1);
     }
 
     AddKeyDownListener(_listener)

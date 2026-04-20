@@ -68,6 +68,9 @@ class PlayerController extends Component
     {
         super(gameObject);
 
+        this.OnMouseDown = this.OnMouseDown.bind(this);
+        this.OnMouseUp = this.OnMouseUp.bind(this);
+
         this.OnKeyDown = this.OnKeyDown.bind(this);
         this.OnKeyUp = this.OnKeyUp.bind(this);
         
@@ -84,6 +87,9 @@ class PlayerController extends Component
         this.dashSpeed = 400;
         this.deadzone = 0.15;
 
+        this.blockDrainSpeed = 0.03;
+        this.blockRefillSpeed = 0.2;
+
         this.input = Vector2.zero;
 
         this.rightJoystickInput = Vector2.zero;
@@ -91,13 +97,22 @@ class PlayerController extends Component
         this.directionDegrees = 0;
 
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
-        this.dashCursor.enabled = false;
+        this.dashCursor.renderer.enabled = false;
+        
+        this.blockCursor = this.dashCursor.blockCursor;
+        this.blockCursor.renderer.enabled = false;
 
         this.dashing = false;
+        this.dashHeld = false;
+
+        this.blocking = false;
     }
 
     Start()
     {
+        Engine.I.persistentScene.inputManager.AddMouseDownListener(this.OnMouseDown);
+        Engine.I.persistentScene.inputManager.AddMouseUpListener(this.OnMouseUp);
+
         Engine.I.persistentScene.inputManager.AddKeyDownListener(this.OnKeyDown);
         Engine.I.persistentScene.inputManager.AddKeyUpListener(this.OnKeyUp);
 
@@ -177,11 +192,125 @@ class PlayerController extends Component
 
                 this.dashing = false;
 
-                this.dashCursor.enabled = false;
+                this.dashCursor.renderer.enabled = false;
+
+                this.OnDashTargetReached();
             }
         }
 
         this.UpdateAnimator();
+    }
+
+    OnDashStart()
+    {
+        this.dashHeld = true;
+
+        if (this.blocking) { return; }
+
+        if (!this.dashing && this.gameObject.scene.dashUI.animator.currentClip.name != "CooldownBarAnim")
+        {
+            this.dashCursor.animator.JumpToFrame(0);
+            this.dashCursor.renderer.enabled = true;
+
+            this.gameObject.scene.dashUI.animator.SetClip("SelectBarAnim");
+            this.gameObject.scene.dashUI.animator.Play();
+        }
+
+        else if(!this.dashing)
+        {
+            this.dashCursor.animator.JumpToFrame(2);
+            this.dashCursor.renderer.enabled = true;
+        }
+    }
+
+    OnDashStop()
+    {
+        this.dashHeld = false;
+
+        if (!this.dashing && this.gameObject.scene.dashUI.animator.currentClip.name != "CooldownBarAnim" && !this.blocking)
+        {
+            this.dashCursor.animator.JumpToFrame(1)
+            this.dashing = true;
+
+            this.gameObject.scene.dashUI.animator.SetClip("ActiveBarAnim");
+        }
+
+        else
+        {
+            this.dashCursor.transform.parent = this.gameObject.transform;
+            this.dashCursor.transform.localPosition = Vector2.zero
+
+            this.dashing = false
+
+            this.dashCursor.renderer.enabled = false;
+
+            if (this.gameObject.scene.dashUI.animator.currentClip.name != "CooldownBarAnim" && !this.blocking)
+            {
+                this.gameObject.scene.dashUI.animator.SetClip("CooldownBarAnim");
+            }
+        }
+    }
+
+    OnDashTargetReached()
+    {
+        this.gameObject.scene.dashUI.animator.SetClip("CooldownBarAnim");
+    }
+
+    OnBlockStart()
+    {
+        if (this.dashHeld) { return; }
+
+        if (!this.blocking && this.gameObject.scene.blockUI.animator.currentClip.name != "FillBarAnim")
+        {
+            this.gameObject.scene.blockUI.animator.Forward();
+            this.gameObject.scene.blockUI.animator.Play();
+
+            this.gameObject.scene.blockUI.animator.currentClip.frameDuration = this.blockDrainSpeed;
+
+            this.blocking = true;
+        }
+
+        this.blockCursor.renderer.enabled = true;
+    }
+
+    OnBlockStop()
+    {
+        if (this.blocking && this.gameObject.scene.blockUI.animator.currentClip.name != "FillBarAnim")
+        {
+            this.gameObject.scene.blockUI.animator.Reverse();
+
+            this.gameObject.scene.blockUI.animator.currentClip.frameDuration = this.blockRefillSpeed;
+        }
+
+        this.blockCursor.renderer.enabled = false;
+
+        this.blocking = false;
+    }
+
+    OnMouseDown(_event)
+    {
+        switch (_event.button)
+        {
+            case (2):
+            {
+                this.OnBlockStart();
+
+                break;
+            }
+        }
+    }
+
+    OnMouseUp(_event)
+    {
+        switch (_event.button)
+        {
+            case (2):
+            {
+                this.OnBlockStop();
+
+                break;
+            }
+        }
     }
 
     OnKeyDown(_event)
@@ -220,11 +349,7 @@ class PlayerController extends Component
 
             case ("Space"):
             {
-                if (!this.dashing)
-                {
-                    this.dashCursor.animator.JumpToFrame(0);
-                    this.dashCursor.enabled = true;
-                }
+                this.OnDashStart();
 
                 break;
             }
@@ -265,22 +390,7 @@ class PlayerController extends Component
 
             case ("Space"):
             {
-                if (!this.dashing)
-                {
-                    this.dashCursor.animator.JumpToFrame(1);
-
-                    this.dashing = true;
-                }
-
-                else
-                {
-                    this.dashCursor.transform.parent = this.gameObject.transform;
-                    this.dashCursor.transform.localPosition = Vector2.zero;
-
-                    this.dashing = false;
-
-                    this.dashCursor.enabled = false;
-                }
+                this.OnDashStop();
 
                 break;
             }
@@ -293,11 +403,14 @@ class PlayerController extends Component
         {
             case ("L2"):
             {
-                if (!this.dashing)
-                {
-                    this.dashCursor.animator.JumpToFrame(0);
-                    this.dashCursor.enabled = true;
-                }
+                this.OnDashStart();
+
+                break;
+            }
+
+            case ("RStick"):
+            {
+                this.OnBlockStart();
 
                 break;
             }
@@ -310,9 +423,14 @@ class PlayerController extends Component
         {
             case ("L2"):
             {
-                this.dashCursor.animator.JumpToFrame(1);
+                this.OnDashStop();
 
-                this.dashing = true;
+                break;
+            }
+
+            case ("RStick"):
+            {
+                this.OnBlockStop();
 
                 break;
             }
@@ -378,13 +496,30 @@ class Player extends GameObject
     constructor(scene, name="Player", parent=null)
     {
         super(scene, name, parent);
+        
+        this.fixedAnimationClip = new AnimationClip("FixedAnim", 0, 8, 0, false, false);
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.playerTexture, undefined, undefined, new Vector2(32, 32)));
-        this.animator = this.AddComponent(Animator, this.renderer, 8, [this.scene.fixedAnimationClip]);
+        this.animator = this.AddComponent(Animator, this.renderer, 8, [this.fixedAnimationClip]);
 
         this.col = this.AddComponent(PlayerCollider);
 
         this.controller = this.AddComponent(PlayerController);
+    }
+}
+
+class BlockCursor extends GameObject
+{
+    constructor(scene, name="BlockCursor", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.canBlockAnim = new AnimationClip("CanBlockAnim", 0, 0, 1, false, false);
+        this.blockAnim = new AnimationClip("BlockAnim", 1, 1, 1, false, false);
+        this.cannotBlockAnim = new AnimationClip("CannotBlockAnim", 2, 2, 1, false, false);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.blockCursorTexture, undefined, undefined, new Vector2(16, 16)));
+        this.animator = this.AddComponent(Animator, this.renderer, 3, [this.canBlockAnim, this.blockAnim, this.cannotBlockAnim]);
     }
 }
 
@@ -400,7 +535,74 @@ class DashCursor extends GameObject
         this.safePivot.transform.localPosition = new Vector2(0, 64);
 
         this.renderer = this.pivot.AddComponent(SpriteRenderer, new Sprite(this.scene.dashCursorTexture, undefined, undefined, new Vector2(16, 16)));
-        this.animator = this.pivot.AddComponent(Animator, this.renderer, 2, [this.scene.fixedAnimationClip]);
+        this.animator = this.pivot.AddComponent(Animator, this.renderer, 3, [this.transform.parent.gameObject.fixedAnimationClip]);
+
+        this.blockCursor = new BlockCursor(this.scene, undefined, this.safePivot.transform);
+        this.blockCursor.transform.localPosition = new Vector2(0, -48);
+    }
+}
+
+class BlockUI extends GameObject
+{
+    constructor(scene, name="BlockUI", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.OnDrainAnimationComplete = this.OnDrainAnimationComplete.bind(this);
+        this.OnFillAnimationComplete = this.OnFillAnimationComplete.bind(this);
+
+        this.drainBarAnim = new AnimationClip("DrainBarAnim", 0, 33, 0.03, false, false, this.OnDrainAnimationComplete);
+        this.fillBarAnim = new AnimationClip("FillBarAnim", 34, 67, 0.1, false, false, this.OnFillAnimationComplete);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.blockUITexture, undefined, undefined, new Vector2(64, 16)));
+        this.animator = this.AddComponent(Animator, this.renderer, 68, [this.drainBarAnim, this.fillBarAnim]);
+    }
+
+    OnDrainAnimationComplete()
+    {
+        if (!this.animator._reversing)
+        {
+            this.animator.SetClip("FillBarAnim");
+
+            this.scene.player.controller.dashCursor.blockCursor.animator.SetClip("CannotBlockAnim");
+        }
+    }
+
+    OnFillAnimationComplete()
+    {
+        this.animator.SetClip("DrainBarAnim");
+        this.animator.Stop();
+
+        this.scene.player.controller.dashCursor.blockCursor.animator.SetClip("CanBlockAnim");
+        this.scene.player.controller.dashCursor.blockCursor.renderer.enabled = false;
+    }
+}
+
+class DashUI extends GameObject
+{
+    constructor(scene, name="DashUI", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.OnCooldownAnimationComplete = this.OnCooldownAnimationComplete.bind(this);
+
+        this.readyBarAnim = new AnimationClip("ReadyBarAnim", 0, 4, 0.1, true, true);
+        this.selectBarAnim = new AnimationClip("SelectBarAnim", 5, 7, 0.1, true, true);
+        this.activeBarAnim = new AnimationClip("ActiveBarAnim", 8, 10, 0.1, true, true);
+        this.cooldownBarAnim = new AnimationClip("CooldownBarAnim", 11, 17, 0.5, false, true, this.OnCooldownAnimationComplete);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.dashUITexture, undefined, undefined, new Vector2(3, 16)));
+        this.animator = this.AddComponent(Animator, this.renderer, 16, [this.readyBarAnim, this.selectBarAnim, this.activeBarAnim, this.cooldownBarAnim]);
+    }
+
+    OnCooldownAnimationComplete()
+    {
+        this.animator.SetClip("ReadyBarAnim");
+
+        if (this.scene.player.controller.dashCursor.animator.currentFrame)
+        {
+            this.scene.player.controller.dashCursor.animator.JumpToFrame(0);
+        }
     }
 }
 
@@ -416,10 +618,17 @@ export class Gym extends Scene
         this.dashCursorTexture = new Image();
         this.dashCursorTexture.src = "source/tireless/resources/textures/Shared/dashCursor.png";
 
+        this.blockCursorTexture = new Image();
+        this.blockCursorTexture.src = "source/tireless/resources/textures/Shared/blockCursor.png";
+
         this.backgroundTexture = new Image();
         this.backgroundTexture.src = "source/tireless/resources/textures/Gym/gymBackground.png";
 
-        this.fixedAnimationClip = new AnimationClip("FixedAnim", 0, 8, 0, false, false);
+        this.blockUITexture = new Image();
+        this.blockUITexture.src = "source/tireless/resources/textures/UI/tirelessBlockSlider.png";
+
+        this.dashUITexture = new Image();
+        this.dashUITexture.src = "source/tireless/resources/textures/UI/tirelessDashBar.png";
     }
 
     Start()
@@ -428,6 +637,12 @@ export class Gym extends Scene
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.player = new Player(this);
+
+        this.blockUI = new BlockUI(this);
+        this.blockUI.transform.position = new Vector2(48, 24);
+
+        this.dashUI = new DashUI(this);
+        this.dashUI.transform.position = new Vector2(80, 24);
 
         this.testCol = new GameObject(this, "TestCol").AddComponent(WorldCollider, new Vector2(32, 32));
 
