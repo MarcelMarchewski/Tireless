@@ -1,26 +1,20 @@
 import 
 {
-    UIElement,
-    Component,
     GameObject,
     Scene,
     SpriteRenderer,
     Sprite,
     Animator,
     AnimationClip,
-    UICanvas,
     Timer,
-    TextRenderer,
-    TextData,
     Vector2,
-    Engine,
-    AudioPlayer
+    Engine
 } from "/source/engine/rebound.js";
 
 import
 {
     MainMenu
-} from "/source/tireless/mainMenu.js";
+} from "/source/tireless/scenes/mainMenu.js";
 
 class SceneSwapTimer extends Timer
 {

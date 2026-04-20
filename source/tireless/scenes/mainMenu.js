@@ -19,7 +19,7 @@ import
 import
 {
     Gym
-} from "/source/tireless/gym.js";
+} from "/source/tireless/scenes/gym.js";
 
 class EntityToggleButton extends UIElement
 {

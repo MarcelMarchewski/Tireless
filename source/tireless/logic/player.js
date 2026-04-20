@@ -2,29 +2,16 @@ import
 {
     Component,
     GameObject,
-    Scene,
     SpriteRenderer,
-    TilemapRenderer,
     Sprite,
     Animator,
     AnimationClip,
-    UICanvas,
-    TextData,
     AABB,
     Vector2,
-    Engine,
-    AudioPlayer
+    Engine
 } from "/source/engine/rebound.js";
 
-class WorldCollider extends AABB
-{
-    constructor(gameObject, dimensions)
-    {
-        super(gameObject, dimensions);
-    }
-}
-
-class PlayerCollider extends AABB
+export class PlayerCollider extends AABB
 {
     constructor(gameObject, dimensions=new Vector2(26, 26))
     {
@@ -62,7 +49,7 @@ class PlayerCollider extends AABB
     }
 }
 
-class PlayerController extends Component
+export class PlayerController extends Component
 {
     constructor(gameObject)
     {
@@ -491,7 +478,7 @@ class PlayerController extends Component
     }
 }
 
-class Player extends GameObject
+export class Player extends GameObject
 {
     constructor(scene, name="Player", parent=null)
     {
@@ -508,7 +495,7 @@ class Player extends GameObject
     }
 }
 
-class BlockCursor extends GameObject
+export class BlockCursor extends GameObject
 {
     constructor(scene, name="BlockCursor", parent=null)
     {
@@ -523,7 +510,7 @@ class BlockCursor extends GameObject
     }
 }
 
-class DashCursor extends GameObject
+export class DashCursor extends GameObject
 {
     constructor(scene, name="DashCursor", parent=null)
     {
@@ -539,116 +526,5 @@ class DashCursor extends GameObject
 
         this.blockCursor = new BlockCursor(this.scene, undefined, this.safePivot.transform);
         this.blockCursor.transform.localPosition = new Vector2(0, -48);
-    }
-}
-
-class BlockUI extends GameObject
-{
-    constructor(scene, name="BlockUI", parent=null)
-    {
-        super(scene, name, parent);
-
-        this.OnDrainAnimationComplete = this.OnDrainAnimationComplete.bind(this);
-        this.OnFillAnimationComplete = this.OnFillAnimationComplete.bind(this);
-
-        this.drainBarAnim = new AnimationClip("DrainBarAnim", 0, 33, 0.03, false, false, this.OnDrainAnimationComplete);
-        this.fillBarAnim = new AnimationClip("FillBarAnim", 34, 67, 0.1, false, false, this.OnFillAnimationComplete);
-
-        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.blockUITexture, undefined, undefined, new Vector2(64, 16)));
-        this.animator = this.AddComponent(Animator, this.renderer, 68, [this.drainBarAnim, this.fillBarAnim]);
-    }
-
-    OnDrainAnimationComplete()
-    {
-        if (!this.animator._reversing)
-        {
-            this.animator.SetClip("FillBarAnim");
-
-            this.scene.player.controller.dashCursor.blockCursor.animator.SetClip("CannotBlockAnim");
-        }
-    }
-
-    OnFillAnimationComplete()
-    {
-        this.animator.SetClip("DrainBarAnim");
-        this.animator.Stop();
-
-        this.scene.player.controller.dashCursor.blockCursor.animator.SetClip("CanBlockAnim");
-        this.scene.player.controller.dashCursor.blockCursor.renderer.enabled = false;
-    }
-}
-
-class DashUI extends GameObject
-{
-    constructor(scene, name="DashUI", parent=null)
-    {
-        super(scene, name, parent);
-
-        this.OnCooldownAnimationComplete = this.OnCooldownAnimationComplete.bind(this);
-
-        this.readyBarAnim = new AnimationClip("ReadyBarAnim", 0, 4, 0.1, true, true);
-        this.selectBarAnim = new AnimationClip("SelectBarAnim", 5, 7, 0.1, true, true);
-        this.activeBarAnim = new AnimationClip("ActiveBarAnim", 8, 10, 0.1, true, true);
-        this.cooldownBarAnim = new AnimationClip("CooldownBarAnim", 11, 17, 0.5, false, true, this.OnCooldownAnimationComplete);
-
-        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.dashUITexture, undefined, undefined, new Vector2(3, 16)));
-        this.animator = this.AddComponent(Animator, this.renderer, 16, [this.readyBarAnim, this.selectBarAnim, this.activeBarAnim, this.cooldownBarAnim]);
-    }
-
-    OnCooldownAnimationComplete()
-    {
-        this.animator.SetClip("ReadyBarAnim");
-
-        if (this.scene.player.controller.dashCursor.animator.currentFrame)
-        {
-            this.scene.player.controller.dashCursor.animator.JumpToFrame(0);
-        }
-    }
-}
-
-export class Gym extends Scene
-{
-    constructor()
-    {
-        super();
-
-        this.playerTexture = new Image();
-        this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
-
-        this.dashCursorTexture = new Image();
-        this.dashCursorTexture.src = "source/tireless/resources/textures/Shared/dashCursor.png";
-
-        this.blockCursorTexture = new Image();
-        this.blockCursorTexture.src = "source/tireless/resources/textures/Shared/blockCursor.png";
-
-        this.backgroundTexture = new Image();
-        this.backgroundTexture.src = "source/tireless/resources/textures/Gym/gymBackground.png";
-
-        this.blockUITexture = new Image();
-        this.blockUITexture.src = "source/tireless/resources/textures/UI/tirelessBlockSlider.png";
-
-        this.dashUITexture = new Image();
-        this.dashUITexture.src = "source/tireless/resources/textures/UI/tirelessDashBar.png";
-    }
-
-    Start()
-    {
-        this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(16, 16)), "source/tireless/resources/data/tilemaps/gym.json");
-        this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
-
-        this.player = new Player(this);
-
-        this.blockUI = new BlockUI(this);
-        this.blockUI.transform.position = new Vector2(48, 24);
-
-        this.dashUI = new DashUI(this);
-        this.dashUI.transform.position = new Vector2(80, 24);
-
-        this.testCol = new GameObject(this, "TestCol").AddComponent(WorldCollider, new Vector2(32, 32));
-
-        this.testCol.renderer = new GameObject(this, "Renderer", this.testCol.gameObject.transform).AddComponent(SpriteRenderer, new Sprite(Engine.I.missingTexture, undefined, undefined, new Vector2(2, 2)));
-        this.testCol.renderer.gameObject.transform.scale = new Vector2(16, 16);
-
-        this.testCol.gameObject.transform.position = new Vector2(128, 128);
     }
 }

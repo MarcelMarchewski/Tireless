@@ -7,7 +7,7 @@ import
 import
 {
     SplashScreen
-} from "/source/tireless/splashScreen.js";
+} from "/source/tireless/scenes/splashScreen.js";
 
 const _playButton = document.getElementById("playButton");
 
