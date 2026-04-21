@@ -1830,7 +1830,7 @@ class ColliderManager extends Component
         );
     }
 
-    Raycast(_origin, _direction, _maxDistance, _step=1, _ignoreTypes=[])
+    Raycast(_origin, _direction, _maxDistance, _step=1, _ignoreTypes=[], _includeTypes=[])
     {
         const _dir = _direction.normalised;
 
@@ -1840,23 +1840,38 @@ class ColliderManager extends Component
 
             for (let j = 0; j < this._colliders.length; j++)
             {
-                let _ignored = false;
-
-                for (let k = 0; k < _ignoreTypes.length; k++)
+                if (_ignoreTypes.length > 0)
                 {
-                    if (this._colliders[j] instanceof _ignoreTypes[k]) { _ignored = true; break; }
+                    let _ignored = false;
+
+                    for (let k = 0; k < _ignoreTypes.length; k++)
+                    {
+                        if (this._colliders[j] instanceof _ignoreTypes[k]) { _ignored = true; break; }
+                    }
+
+                    if (_ignored) { continue; }
                 }
 
-                if (_ignored) { continue; }
+                if (_includeTypes.length > 0)
+                {
+                    let _included = false;
+
+                    for (let k = 0; k < _includeTypes.length; k++)
+                    {
+                        if (this._colliders[j] instanceof _includeTypes[k]) { _included = true; break; }
+                    }
+
+                    if (!_included) { continue; }
+                }
 
                 if (this.PointInAABB(_point, this._colliders[j]))
                 {
-                    return [_point, true];
+                    return [_point, this._colliders[j]];
                 }
             }
         }
 
-        return [Vector2.Add(_origin, Vector2.Multiply(_dir, new Vector2(_maxDistance, _maxDistance))), false];
+        return [Vector2.Add(_origin, Vector2.Multiply(_dir, new Vector2(_maxDistance, _maxDistance))), null];
     }
 }
 

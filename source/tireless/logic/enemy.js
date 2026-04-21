@@ -17,6 +17,11 @@ import
     LivingEntity
 } from "/source/tireless/logic/livingEntity.js";
 
+import
+{
+    PlayerCollider
+} from "/source/tireless/logic/player.js";
+
 export class EnemyCollider extends AABB
 {
     constructor(gameObject, dimensions)
@@ -52,6 +57,17 @@ export class EnemyCollider extends AABB
         {
             this.gameObject.transform.localPosition.y -= (_penDepth.y + this.epsilon) * Math.sign(_delta.y);
         }
+
+        if (_other instanceof PlayerCollider)
+        {
+            if (this.enemy == undefined)
+            {
+                this.enemy = this.gameObject.GetComponent(EnemyController);
+            }
+
+            this.enemy.dashing = false;
+            this.enemy.dashTarget = null;
+        }
     }
 }
 
@@ -74,9 +90,28 @@ export class EnemyDashTimer extends Timer
         else
         {
             this.enemy.dashing = false;
-
             this.enemy.dashTarget = null;
         }
+    }
+}
+
+export class EnemyStunTimer extends Timer
+{
+    constructor(gameObject, startValue=5, autoPlay=false, destructive=false)
+    {
+        super(gameObject, startValue, autoPlay, destructive);
+    }
+
+    OnTimerUp()
+    {
+        if (this.enemy == undefined)
+        {
+            this.enemy = this.gameObject.GetComponent(EnemyController);
+        }
+
+        this.enemy.stunned = false;
+
+        this.enemy.dashTimer.Stop();
     }
 }
 
@@ -89,9 +124,10 @@ export class EnemyController extends LivingEntity
         this.player = this.gameObject.scene.player;
 
         this.dashTimer = this.gameObject.AddComponent(EnemyDashTimer);
+        this.stunTimer = this.gameObject.AddComponent(EnemyStunTimer);
 
         this.speed = 100;
-        this.dashSpeed = 400;
+        this.dashSpeed = 300;
 
         this.detectRange = 144;
         this.attackRange = 64;
@@ -105,10 +141,14 @@ export class EnemyController extends LivingEntity
 
         this.dashTarget = null;
         this.dashing = false;
+
+        this.stunned = false;
     }
 
     Update()
     {
+        if (this.stunned) { return; }
+
         if (this.dashTarget == null)
         {
             let _distanceToPlayer = Vector2.Distance(this.gameObject.transform.position, this.player.transform.position);

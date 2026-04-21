@@ -31,6 +31,7 @@ export class BlockUI extends GameObject
             this.animator.SetClip("FillBarAnim");
 
             this.scene.player.controller.dashCursor.blockCursor.animator.SetClip("CannotBlockAnim");
+            this.scene.player.controller.blocking = false;
         }
     }
 

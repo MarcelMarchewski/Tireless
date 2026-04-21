@@ -6,6 +6,7 @@ import
     Sprite,
     Animator,
     AnimationClip,
+    AudioPlayer,
     Timer,
     AABB,
     Vector2,
@@ -16,6 +17,12 @@ import
 {
     LivingEntity
 } from "/source/tireless/logic/livingEntity.js";
+
+import
+{
+    EnemyCollider,
+    EnemyController
+} from "/source/tireless/logic/enemy.js";
 
 export class PlayerCollider extends AABB
 {
@@ -57,7 +64,7 @@ export class PlayerCollider extends AABB
 
 export class PlayerParryTimer extends Timer
 {
-    constructor(gameObject, startValue=0.1, autoPlay=false, destructive=false)
+    constructor(gameObject, startValue=0.05, autoPlay=false, destructive=false)
     {
         super(gameObject, startValue, autoPlay, destructive);
     }
@@ -106,6 +113,8 @@ export class PlayerController extends LivingEntity
         this.rightJoystickInput = Vector2.zero;
 
         this.directionDegrees = 0;
+
+        this.blockParrySFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Parry.wav", Engine.I.sfxMixer);
 
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
         this.dashCursor.renderer.enabled = false;
@@ -168,11 +177,36 @@ export class PlayerController extends LivingEntity
 
             if (_direction.magnitude > 0)
             {
-                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 32, 1, [PlayerCollider]);
+                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 32, 1, undefined, [EnemyCollider]);
 
-                if (_hit[1])
+                if (_hit[1] != undefined)
                 {
-                    
+                    const _enemy = _hit[1].gameObject.GetComponent(EnemyController);
+
+                    if (_enemy.dashing)
+                    {
+                        if (this.canParry)
+                        {
+                            _enemy.dashing = false;
+                            _enemy.dashTarget = null;
+
+                            _enemy.stunned = true;
+
+                            _enemy.stunTimer.Play();
+
+                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_Parry.wav");
+                            this.blockParrySFX.Play();
+                        }
+
+                        else
+                        {
+                            _enemy.dashing = false;
+                            _enemy.dashTarget = null;
+
+                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_Block.wav");
+                            this.blockParrySFX.Play();
+                        }
+                    }
                 }
             }
         }
