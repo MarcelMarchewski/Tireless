@@ -15,6 +15,11 @@ import
     Player
 } from "/source/tireless/logic/player.js";
 
+import
+{
+    Enemy
+} from "/source/tireless/logic/enemy.js";
+
 import 
 {
     BlockUI,
@@ -38,6 +43,9 @@ export class Gym extends Scene
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
 
+        this.enemyTexture = new Image();
+        this.enemyTexture.src = "source/tireless/resources/textures/Shared/tirelessEnemySamurai.png";
+
         this.dashCursorTexture = new Image();
         this.dashCursorTexture.src = "source/tireless/resources/textures/Shared/dashCursor.png";
 
@@ -60,6 +68,9 @@ export class Gym extends Scene
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.player = new Player(this);
+
+        this.enemy = new Enemy(this);
+        this.enemy.transform.position = new Vector2(196, 196);
 
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(48, 24);

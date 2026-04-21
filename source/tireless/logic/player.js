@@ -6,10 +6,16 @@ import
     Sprite,
     Animator,
     AnimationClip,
+    Timer,
     AABB,
     Vector2,
     Engine
 } from "/source/engine/rebound.js";
+
+import 
+{
+    LivingEntity
+} from "/source/tireless/logic/livingEntity.js";
 
 export class PlayerCollider extends AABB
 {
@@ -49,7 +55,25 @@ export class PlayerCollider extends AABB
     }
 }
 
-export class PlayerController extends Component
+export class PlayerParryTimer extends Timer
+{
+    constructor(gameObject, startValue=0.1, autoPlay=false, destructive=false)
+    {
+        super(gameObject, startValue, autoPlay, destructive);
+    }
+
+    OnTimerUp()
+    {
+        if (this.player == undefined)
+        {
+            this.player = this.gameObject.GetComponent(PlayerController);
+        }
+
+        this.player.canParry = false;
+    }
+}
+
+export class PlayerController extends LivingEntity
 {
     constructor(gameObject)
     {
@@ -92,7 +116,11 @@ export class PlayerController extends Component
         this.dashing = false;
         this.dashHeld = false;
 
+        this.parryTimer = this.gameObject.AddComponent(PlayerParryTimer);
+
         this.blocking = false;
+
+        this.canParry = false;
     }
 
     Start()
@@ -112,6 +140,43 @@ export class PlayerController extends Component
 
     Update()
     {
+        if (this.blocking)
+        {
+            let _direction;
+
+            if (Engine.I.persistentScene.inputManager.inputMode == 0)
+            {
+                const _mousePos = Engine.I.persistentScene.cursorManager.cursorPosition;
+
+                _direction = Vector2.Subtract(_mousePos, this.gameObject.transform.position);
+            }
+
+            else
+            {
+                const _joystickPos = Vector2.Add(this.gameObject.transform.position, this.rightJoystickInput);
+
+                if (this.rightJoystickInput.magnitude < 0.1)
+                {
+                    _direction = Vector2.zero;
+                }
+
+                else
+                {
+                    _direction = this.rightJoystickInput;
+                }
+            }
+
+            if (_direction.magnitude > 0)
+            {
+                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 32, 1, [PlayerCollider]);
+
+                if (_hit[1])
+                {
+                    
+                }
+            }
+        }
+
         if (!this.dashing)
         {
             this.gameObject.transform.localPosition.Add(Vector2.Multiply(this.input.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed)));
@@ -145,7 +210,7 @@ export class PlayerController extends Component
 
             if (_direction.magnitude > 0)
             {
-                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 80, 2, [PlayerCollider]);
+                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 80, 2, [PlayerCollider])[0];
 
                 const _safeHit = Vector2.Subtract(_hit, Vector2.Multiply(_direction.normalised, new Vector2(4, 4)));
 
@@ -255,6 +320,13 @@ export class PlayerController extends Component
             this.gameObject.scene.blockUI.animator.currentClip.frameDuration = this.blockDrainSpeed;
 
             this.blocking = true;
+
+            if (!this.parryTimer._running)
+            {
+                this.parryTimer.Play();
+
+                this.canParry = true;
+            }
         }
 
         this.blockCursor.renderer.enabled = true;
@@ -267,6 +339,13 @@ export class PlayerController extends Component
             this.gameObject.scene.blockUI.animator.Reverse();
 
             this.gameObject.scene.blockUI.animator.currentClip.frameDuration = this.blockRefillSpeed;
+
+            if (this.parryTimer._running)
+            {
+                this.parryTimer.Stop();
+
+                this.canParry = false;
+            }
         }
 
         this.blockCursor.renderer.enabled = false;

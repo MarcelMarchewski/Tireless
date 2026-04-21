@@ -1851,12 +1851,12 @@ class ColliderManager extends Component
 
                 if (this.PointInAABB(_point, this._colliders[j]))
                 {
-                    return _point;
+                    return [_point, true];
                 }
             }
         }
 
-        return Vector2.Add(_origin, Vector2.Multiply(_dir, new Vector2(_maxDistance, _maxDistance)));
+        return [Vector2.Add(_origin, Vector2.Multiply(_dir, new Vector2(_maxDistance, _maxDistance))), false];
     }
 }
 
