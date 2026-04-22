@@ -114,7 +114,9 @@ export class PlayerController extends LivingEntity
 
         this.directionDegrees = 0;
 
-        this.blockParrySFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Parry.wav", Engine.I.sfxMixer);
+        this.blockParrySFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_SwordParry.wav", Engine.I.sfxMixer);
+        this.damageSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_PlayerDamaged.wav", Engine.I.sfxMixer);
+        this.attackSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_SwordSwing.wav", Engine.I.sfxMixer);
 
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
         this.dashCursor.renderer.enabled = false;
@@ -130,6 +132,8 @@ export class PlayerController extends LivingEntity
         this.blocking = false;
 
         this.canParry = false;
+
+        this.attacking = false;
     }
 
     Start()
@@ -194,7 +198,7 @@ export class PlayerController extends LivingEntity
 
                             _enemy.stunTimer.Play();
 
-                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_Parry.wav");
+                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordParry.wav");
                             this.blockParrySFX.Play();
                         }
 
@@ -203,7 +207,7 @@ export class PlayerController extends LivingEntity
                             _enemy.dashing = false;
                             _enemy.dashTarget = null;
 
-                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_Block.wav");
+                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordClash.wav");
                             this.blockParrySFX.Play();
                         }
                     }
@@ -285,6 +289,17 @@ export class PlayerController extends LivingEntity
         }
 
         this.UpdateAnimator();
+    }
+
+    OnDamageTaken()
+    {
+        this.damageSFX.Stop();
+        this.damageSFX.Play();
+    }
+
+    OnEntityKilled()
+    {
+
     }
 
     OnDashStart()
@@ -387,10 +402,66 @@ export class PlayerController extends LivingEntity
         this.blocking = false;
     }
 
+    OnAttackStart()
+    {
+        if (this.blocking || this.attacking) { return; }
+
+        let _direction;
+
+        if (Engine.I.persistentScene.inputManager.inputMode == 0)
+        {
+            const _mousePos = Engine.I.persistentScene.cursorManager.cursorPosition;
+
+            _direction = Vector2.Subtract(_mousePos, this.gameObject.transform.position);
+        }
+
+        else
+        {
+            const _joystickPos = Vector2.Add(this.gameObject.transform.position, this.rightJoystickInput);
+
+            if (this.rightJoystickInput.magnitude < 0.1)
+            {
+                _direction = Vector2.zero;
+            }
+
+            else
+            {
+                _direction = this.rightJoystickInput;
+            }
+        }
+
+        if (_direction.magnitude > 0)
+        {
+            const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 32, 1, undefined, [EnemyCollider]);
+            
+            if (_hit[1] != undefined)
+            {
+                const _enemy = _hit[1].gameObject.GetComponent(EnemyController);
+
+                _enemy.Damage(25);
+            }
+
+            this.attackSFX.Stop();
+            this.attackSFX.Play();
+        }
+    }
+
+    OnAttackStop()
+    {
+        this.attacking = false;
+    }
+
     OnMouseDown(_event)
     {
         switch (_event.button)
         {
+            case (0):
+            {
+                this.OnAttackStart();
+
+                break;
+            }
+
             case (2):
             {
                 this.OnBlockStart();
@@ -404,6 +475,13 @@ export class PlayerController extends LivingEntity
     {
         switch (_event.button)
         {
+            case (0):
+            {
+                this.OnAttackStop();
+
+                break;
+            }
+
             case (2):
             {
                 this.OnBlockStop();

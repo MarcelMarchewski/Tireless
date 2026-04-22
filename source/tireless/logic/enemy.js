@@ -8,6 +8,7 @@ import
     AnimationClip,
     AABB,
     Timer,
+    AudioPlayer,
     Vector2,
     Engine
 } from "/source/engine/rebound.js";
@@ -63,6 +64,11 @@ export class EnemyCollider extends AABB
             if (this.enemy == undefined)
             {
                 this.enemy = this.gameObject.GetComponent(EnemyController);
+            }
+
+            if (!this.stunned && this.enemy.dashing)
+            {
+                this.enemy.player.controller.Damage(25);
             }
 
             this.enemy.dashing = false;
@@ -134,6 +140,8 @@ export class EnemyController extends LivingEntity
 
         this.animator = this.gameObject.GetComponent(Animator);
         this.col = this.gameObject.GetComponent(EnemyCollider);
+
+        this.damageSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_EnemyDamaged.wav", Engine.I.sfxMixer);
 
         this.moving = true;
 
@@ -276,6 +284,17 @@ export class EnemyController extends LivingEntity
 
             this.animator.JumpToFrame(_frame);
         }
+    }
+
+    OnDamageTaken()
+    {
+        this.damageSFX.Stop();
+        this.damageSFX.Play();
+    }
+
+    OnEntityKilled()
+    {
+
     }
 }
 

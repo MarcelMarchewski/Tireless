@@ -22,19 +22,41 @@ export class LivingEntity extends Component
         this._health = this._maxHealth;
     }
 
+    Base_OnEntityKilled()
+    {
+        this.OnEntityKilled();
+    }
+
+    OnEntityKilled()
+    {
+        
+    }
+
+    Base_OnDamageTaken()
+    {
+        this.OnDamageTaken();
+    }
+
+    OnDamageTaken()
+    {
+        
+    }
+
     OnHealthChanged()
     {
         this._health = Math.min(Math.max(this._health, 0), this._maxHealth);
 
         if (this._health <= 0)
         {
-            this.Base_Destroy();
+            this.Base_OnEntityKilled();
         }
     }
 
     Damage(_amount)
     {
         this._health -= _amount;
+
+        this.OnDamageTaken();
 
         this.OnHealthChanged();
     }
