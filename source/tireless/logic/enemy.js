@@ -13,6 +13,11 @@ import
     Engine
 } from "/source/engine/rebound.js";
 
+import
+{
+    PlayerOnlyCollider
+} from "/source/tireless/tireless.js";
+
 import 
 {
     LivingEntity
@@ -23,12 +28,23 @@ import
     PlayerCollider
 } from "/source/tireless/logic/player.js";
 
+import
+{
+    DeathParticle
+} from "/source/tireless/logic/particles.js";
+
+import
+{
+    EnemyHealthUI
+} from "/source/tireless/logic/UI.js";
+
 export class EnemyCollider extends AABB
 {
     constructor(gameObject, dimensions)
     {
         super(gameObject, dimensions);
 
+        this.ignoreTypes = [PlayerOnlyCollider];
         this.epsilon = 1;
     }
 
@@ -66,7 +82,7 @@ export class EnemyCollider extends AABB
                 this.enemy = this.gameObject.GetComponent(EnemyController);
             }
 
-            if (!this.stunned && this.enemy.dashing)
+            if (!this.enemy.stunned && this.enemy.dashing)
             {
                 this.enemy.player.controller.Damage(25);
             }
@@ -140,6 +156,9 @@ export class EnemyController extends LivingEntity
 
         this.animator = this.gameObject.GetComponent(Animator);
         this.col = this.gameObject.GetComponent(EnemyCollider);
+
+        this.healthUI = new EnemyHealthUI(this.gameObject.scene, "EnemyHealthUI", this.gameObject.transform);
+        this.healthUI.transform.localPosition = new Vector2(0, 28);
 
         this.damageSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_EnemyDamaged.wav", Engine.I.sfxMixer);
 
@@ -290,11 +309,16 @@ export class EnemyController extends LivingEntity
     {
         this.damageSFX.Stop();
         this.damageSFX.Play();
+
+        this.healthUI.animator.JumpToFrame(this.healthUI.animator.currentFrame + 1);
     }
 
     OnEntityKilled()
     {
+        let _particle = new DeathParticle(this.gameObject.scene);
+        _particle.transform.position = this.gameObject.transform.position;
 
+        this.gameObject.Base_Destroy();
     }
 }
 

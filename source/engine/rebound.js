@@ -2979,6 +2979,8 @@ export class Engine
             "DPadDown", "DPadLeft", "DPadRight", "Home", "Touchpad"
         ];
 
+        this.PARTICLE_DEFAULT_LAYER = 50;
+
         this.UI_DEFAULT_LAYER = 100;
         this.UI_TEXT_DEFAULT_LAYER = 150;
 

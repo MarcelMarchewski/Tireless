@@ -1,6 +1,7 @@
 import 
 {
     Vector2,
+    AABB,
     Engine
 } from "/source/engine/rebound.js";
 
@@ -8,6 +9,22 @@ import
 {
     SplashScreen
 } from "/source/tireless/scenes/splashScreen.js";
+
+export class WorldCollider extends AABB
+{
+    constructor(gameObject, dimensions)
+    {
+        super(gameObject, dimensions);
+    }
+}
+
+export class PlayerOnlyCollider extends AABB
+{
+    constructor(gameObject, dimensions)
+    {
+        super(gameObject, dimensions);
+    }
+}
 
 const _playButton = document.getElementById("playButton");
 

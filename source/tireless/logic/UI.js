@@ -5,7 +5,8 @@ import
     Sprite,
     Animator,
     AnimationClip,
-    Vector2
+    Vector2,
+    Engine
 } from "/source/engine/rebound.js";
 
 export class BlockUI extends GameObject
@@ -20,7 +21,7 @@ export class BlockUI extends GameObject
         this.drainBarAnim = new AnimationClip("DrainBarAnim", 0, 33, 0.03, false, false, this.OnDrainAnimationComplete);
         this.fillBarAnim = new AnimationClip("FillBarAnim", 34, 67, 0.1, false, false, this.OnFillAnimationComplete);
 
-        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.blockUITexture, undefined, undefined, new Vector2(64, 16)));
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.blockUITexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 16)));
         this.animator = this.AddComponent(Animator, this.renderer, 68, [this.drainBarAnim, this.fillBarAnim]);
     }
 
@@ -58,7 +59,7 @@ export class DashUI extends GameObject
         this.activeBarAnim = new AnimationClip("ActiveBarAnim", 8, 10, 0.1, true, true);
         this.cooldownBarAnim = new AnimationClip("CooldownBarAnim", 11, 17, 0.5, false, true, this.OnCooldownAnimationComplete);
 
-        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.dashUITexture, undefined, undefined, new Vector2(3, 16)));
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.dashUITexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(3, 16)));
         this.animator = this.AddComponent(Animator, this.renderer, 16, [this.readyBarAnim, this.selectBarAnim, this.activeBarAnim, this.cooldownBarAnim]);
     }
 
@@ -66,9 +67,46 @@ export class DashUI extends GameObject
     {
         this.animator.SetClip("ReadyBarAnim");
 
-        if (this.scene.player.controller.dashCursor.animator.currentFrame)
-        {
-            this.scene.player.controller.dashCursor.animator.JumpToFrame(0);
-        }
+        this.scene.player.controller.dashCursor.animator.JumpToFrame(0);
+    }
+}
+
+export class HealthUI extends GameObject
+{
+    constructor(scene, name="HealthUI", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.OnDrainAnimationComplete = this.OnDrainAnimationComplete.bind(this);
+
+        this.drainBarAnim = new AnimationClip("DrainBarAnim", 0, 18, 0.1, false, false, this.OnDrainAnimationComplete);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.healthUITexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 16)));
+        this.animator = this.AddComponent(Animator, this.renderer, 19, [this.drainBarAnim]);
+    }
+
+    OnDrainAnimationComplete()
+    {
+
+    }
+}
+
+export class EnemyHealthUI extends GameObject
+{
+    constructor(scene, name="EnemyHealthUI", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.OnDrainAnimationComplete = this.OnDrainAnimationComplete.bind(this);
+
+        this.drainBarAnim = new AnimationClip("DrainBarAnim", 0, 4, 0.1, false, false, this.OnDrainAnimationComplete);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.enemyHealthUITexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(32, 3)));
+        this.animator = this.AddComponent(Animator, this.renderer, 5, [this.drainBarAnim]);
+    }
+
+    OnDrainAnimationComplete()
+    {
+
     }
 }
