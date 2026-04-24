@@ -21,6 +21,11 @@ import
     Gym
 } from "/source/tireless/scenes/gym.js";
 
+import
+{
+    Alleyway
+} from "/source/tireless/scenes/alleyway.js";
+
 class EntityToggleButton extends UIElement
 {
     constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
@@ -358,6 +363,6 @@ export class MainMenu extends Scene
 
     OnPlayButton()
     {
-        Engine.I.LoadScene(new Gym());
+        Engine.I.LoadScene(new Alleyway());
     }
 }
