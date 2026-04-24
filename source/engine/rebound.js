@@ -3142,7 +3142,7 @@ export class Engine
 
                     for (let i = 0; i < _iterations; i++)
                     {
-                        const _drawPos = new Vector2(_startPos.x + _currentPos.x * _renderer.sprite.sourceDimensions.x, _startPos.y + _currentPos.y * _renderer.sprite.sourceDimensions.y);
+                        const _drawPos = new Vector2(_startPos.x + _currentPos.x * _renderer.sprite.sourceDimensions.x, _startPos.y + (_row - 1 - _currentPos.y) * _renderer.sprite.sourceDimensions.y);
 
                         this.ctx.drawImage(_renderer.sprite.texture, _renderer.tiles[_command].x, _renderer.tiles[_command].y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y, _drawPos.x, _drawPos.y, _renderer.sprite.sourceDimensions.x, _renderer.sprite.sourceDimensions.y);
 
