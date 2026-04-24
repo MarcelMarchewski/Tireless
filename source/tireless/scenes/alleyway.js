@@ -33,6 +33,12 @@ import
     PlayerOnlyCollider
 } from "/source/tireless/tireless.js";
 
+import
+{
+    LevelTransition,
+    LevelTransitionFader
+} from "/source/tireless/scenes/levelTransition.js";
+
 export class Alleyway extends Scene
 {
     constructor()
@@ -104,5 +110,7 @@ export class Alleyway extends Scene
 
         this.topWallCol.gameObject.transform.position = new Vector2(128, 212);
         this.bottomWallCol.gameObject.transform.position = new Vector2(128, 48);
+
+        let _fader = new LevelTransitionFader(this, undefined, true);
     }
 }
