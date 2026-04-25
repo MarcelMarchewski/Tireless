@@ -128,3 +128,37 @@ export class DeathParticle extends Particle
         this.transform.scale = new Vector2(1.5, 1.5);
     }
 }
+
+export class HealParticle extends Particle
+{
+    constructor(scene)
+    {
+        let _texture = new Image();
+        _texture.src = "source/tireless/resources/textures/Shared/tirelessHeal.png";
+
+        let _sprite = new Sprite(_texture, Engine.I.PARTICLE_DEFAULT_LAYER, undefined, new Vector2(16, 16));
+
+        let _animationClip = new AnimationClip("HealAnim", 0, 2, 0.25, false, true);
+
+        super(scene, _sprite, 3, _animationClip, true, "HealParticle", null);
+
+        this.transform.scale = new Vector2(1.5, 1.5);
+    }
+}
+
+export class EnemyStunParticle extends Particle
+{
+    constructor(scene)
+    {
+        let _texture = new Image();
+        _texture.src = "source/tireless/resources/textures/Shared/tirelessStunned.png";
+
+        let _sprite = new Sprite(_texture, Engine.I.PARTICLE_DEFAULT_LAYER, undefined, new Vector2(16, 16));
+
+        let _animationClip = new AnimationClip("StunnedAnim", 0, 2, 0.1, false, true);
+
+        super(scene, _sprite, 3, _animationClip, true, "StunnedParticle", null);
+
+        this.transform.scale = new Vector2(1.5, 1.5);
+    }
+}

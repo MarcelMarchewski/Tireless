@@ -369,6 +369,6 @@ export class MainMenu extends Scene
 
     OnPlayButton()
     {
-        let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Alleyway", Alleyway)); });
+        let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Alleyway", Alleyway, undefined, new Vector2(5, 5))); });
     }
 }

@@ -29,6 +29,11 @@ import
 
 import
 {
+    HealthBox
+} from "/source/tireless/logic/interactables.js";
+
+import
+{
     WorldCollider,
     PlayerOnlyCollider
 } from "/source/tireless/tireless.js";
@@ -41,9 +46,11 @@ import
 
 export class Alleyway extends Scene
 {
-    constructor()
+    constructor(playerSpawnPosition=new Vector2(72, 128))
     {
         super();
+
+        this.playerSpawnPosition = playerSpawnPosition;
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -85,16 +92,19 @@ export class Alleyway extends Scene
         this.foregroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.player = new Player(this);
-        this.player.transform.position = new Vector2(72, 128);
+        this.player.transform.position = this.playerSpawnPosition;
 
         const _enemy = new Enemy(this);
         _enemy.transform.position = new Vector2(196, 128);
+
+        const _box = new HealthBox(this);
+        _box.transform.position = new Vector2(160, 144);
 
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);
 
         this.dashUI = new DashUI(this);
-        this.dashUI.transform.position = new Vector2(65, 8);
+        this.dashUI.transform.position = new Vector2(64, 8);
 
         this.healthUI = new HealthUI(this);
         this.healthUI.transform.position = new Vector2(32, 23);

@@ -18,6 +18,11 @@ import
     PlayerOnlyCollider
 } from "/source/tireless/tireless.js";
 
+import
+{
+    InteractableCollider
+} from "/source/tireless/logic/interactables.js";
+
 import 
 {
     LivingEntity
@@ -30,7 +35,8 @@ import
 
 import
 {
-    DeathParticle
+    DeathParticle,
+    EnemyStunParticle
 } from "/source/tireless/logic/particles.js";
 
 import
@@ -44,7 +50,7 @@ export class EnemyCollider extends AABB
     {
         super(gameObject, dimensions);
 
-        this.ignoreTypes = [PlayerOnlyCollider];
+        this.ignoreTypes = [PlayerOnlyCollider, InteractableCollider];
         this.epsilon = 1;
     }
 
@@ -170,11 +176,24 @@ export class EnemyController extends LivingEntity
         this.dashing = false;
 
         this.stunned = false;
+
+        this.stunParticle = null;
     }
 
     Update()
     {
-        if (this.stunned) { return; }
+        if (this.stunned) 
+        {
+            if (this.stunParticle == null || this.stunParticle._destroyed)
+            {
+                this.stunParticle = new EnemyStunParticle(this.gameObject.scene);
+
+                this.stunParticle.transform.parent = this.gameObject.transform;
+                this.stunParticle.transform.localPosition = Vector2.zero;
+            }
+
+            return; 
+        }
 
         if (this.dashTarget == null)
         {

@@ -36,7 +36,7 @@ export class LevelTransitionDisplayTimer extends Timer
 
 export class LevelTransition extends Scene
 {
-    constructor(nextLevelTitle, nextLevelType)
+    constructor(nextLevelTitle, nextLevelType, ...args)
     {
         super();
 
@@ -45,6 +45,8 @@ export class LevelTransition extends Scene
 
         this.nextLevelTitle = nextLevelTitle;
         this.nextLevelType = nextLevelType;
+
+        this.args = args;
     }
 
     Start()
@@ -76,7 +78,7 @@ export class LevelTransition extends Scene
 
         else
         {
-            Engine.I.LoadScene(new this.nextLevelType());
+            Engine.I.LoadScene(new this.nextLevelType(...this.args));
         }
     }
 }

@@ -31,13 +31,19 @@ import
     SwordParryParticle,
     BlockParticle,
     BloodParticle,
-    DeathParticle
+    DeathParticle,
+    HealParticle
 } from "/source/tireless/logic/particles.js";
 
 import
 {
     WorldCollider
 } from "/source/tireless/tireless.js";
+
+import
+{
+    InteractableCollider
+} from "/source/tireless/logic/interactables.js";
 
 export class PlayerCollider extends AABB
 {
@@ -55,6 +61,8 @@ export class PlayerCollider extends AABB
 
     OnCollisionDetected(_other)
     {
+        if (_other instanceof InteractableCollider) { return; }
+
         const _delta = new Vector2(
             _other.gameObject.transform.position.x - this.gameObject.transform.position.x,
             _other.gameObject.transform.position.y - this.gameObject.transform.position.y
@@ -149,6 +157,7 @@ export class PlayerController extends LivingEntity
 
         this.blockParrySFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_SwordParry.wav", Engine.I.sfxMixer, 3);
         this.damageSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_PlayerDamaged.wav", Engine.I.sfxMixer);
+        this.healSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Heal.wav", Engine.I.sfxMixer);
         this.attackSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_SwordSwing.wav", Engine.I.sfxMixer);
 
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
@@ -352,17 +361,34 @@ export class PlayerController extends LivingEntity
         this.UpdateAnimator();
     }
 
-    OnDamageTaken()
+    OnHealthChanged(_amount)
     {
-        this.damageSFX.Stop();
-        this.damageSFX.Play();
+        if (_amount < 0)
+        {
+            this.damageSFX.Stop();
+            this.damageSFX.Play();
 
-        let _bloodParticle = new BloodParticle(this.gameObject.scene);
-        _bloodParticle.transform.position = this.gameObject.transform.position;
+            let _bloodParticle = new BloodParticle(this.gameObject.scene);
+            _bloodParticle.transform.position = this.gameObject.transform.position;
 
-        const _animator = this.gameObject.scene.healthUI.animator;
+            const _animator = this.gameObject.scene.healthUI.animator;
 
-        _animator.JumpToFrame(_animator.currentFrame + 5);
+            _animator.JumpToFrame(_animator.currentFrame + 5);
+        }
+
+        else
+        {
+            this.healSFX.Stop();
+            this.healSFX.Play();
+
+            let _healParticle = new HealParticle(this.gameObject.scene);
+            _healParticle.transform.parent = this.gameObject.transform;
+            _healParticle.transform.localPosition = Vector2.zero;
+
+            const _animator = this.gameObject.scene.healthUI.animator;
+
+            _animator.JumpToFrame(_animator.currentFrame - 5);
+        }
     }
 
     OnEntityKilled()

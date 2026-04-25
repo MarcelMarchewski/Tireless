@@ -42,7 +42,7 @@ export class LivingEntity extends Component
         
     }
 
-    OnHealthChanged()
+    Base_OnHealthChanged(_amount)
     {
         this._health = Math.min(Math.max(this._health, 0), this._maxHealth);
 
@@ -50,6 +50,13 @@ export class LivingEntity extends Component
         {
             this.Base_OnEntityKilled();
         }
+
+        this.OnHealthChanged(_amount);
+    }
+
+    OnHealthChanged(_amount)
+    {
+        
     }
 
     Damage(_amount)
@@ -58,21 +65,21 @@ export class LivingEntity extends Component
 
         this.OnDamageTaken();
 
-        this.OnHealthChanged();
+        this.Base_OnHealthChanged(-_amount);
     }
 
     Heal(_amount)
     {
         this._health += _amount;
 
-        this.OnHealthChanged();
+        this.Base_OnHealthChanged(_amount);
     }
 
     set health(_value)
     {
         this._health = _value;
 
-        this.OnHealthChanged();
+        this.Base_OnHealthChanged(_value);
     }
 
     get health()
@@ -83,12 +90,15 @@ export class LivingEntity extends Component
     set maxHealth(_value)
     {
         this._maxHealth = _value;
-
-        this.OnHealthChanged();
     }
 
     get maxHealth()
     {
         return this._maxHealth;
+    }
+
+    get isFullHealth()
+    {
+        return this.health >= this.maxHealth;
     }
 }
