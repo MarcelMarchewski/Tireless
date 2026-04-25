@@ -38,7 +38,7 @@ export class LevelTransition extends Scene
 {
     constructor(nextLevelTitle, nextLevelType, ...args)
     {
-        super();
+        super("LevelTransition");
 
         this.backgroundTexture = new Image();
         this.backgroundTexture.src = "source/tireless/resources/textures/LevelTransition/tirelessLevelTitleCard.png";

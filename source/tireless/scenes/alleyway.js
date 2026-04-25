@@ -48,7 +48,7 @@ export class Alleyway extends Scene
 {
     constructor(playerSpawnPosition=new Vector2(72, 128))
     {
-        super();
+        super("Alleyway");
 
         this.playerSpawnPosition = playerSpawnPosition;
 

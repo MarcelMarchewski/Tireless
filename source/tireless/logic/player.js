@@ -7,6 +7,7 @@ import
     Animator,
     AnimationClip,
     AudioPlayer,
+    UICanvas,
     Timer,
     AABB,
     Vector2,
@@ -44,6 +45,51 @@ import
 {
     InteractableCollider
 } from "/source/tireless/logic/interactables.js";
+
+import
+{
+    DeathScreenRetryButton,
+    DeathScreenMenuButton
+} from "/source/tireless/logic/UI.js";
+
+export class PlayerDeathScreen extends GameObject
+{
+    constructor(scene, name="PlayerDeathScreen", parent=null)
+    {
+        super(scene, name, parent);
+        
+        this.OnAnimationComplete = this.OnAnimationComplete.bind(this);
+
+        this.canvas = new GameObject(this.scene, "Canvas", this.transform).AddComponent(UICanvas);
+
+        this.texture = new Image();
+        this.texture.src = "source/tireless/resources/textures/Shared/tirelessDeathScreen.png";
+
+        this.deathScreenAnim = new AnimationClip("DeathScreenAnim", 0, 26, 0.1, false, true, this.OnAnimationComplete);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, 400, undefined, new Vector2(64, 64)));
+
+        this.animator = this.AddComponent(Animator, this.renderer, 27, [this.deathScreenAnim]);
+
+        this.retryButton = new DeathScreenRetryButton(this.scene, this.canvas.gameObject, new Vector2(64, 32), undefined, undefined, this.canvas.gameObject.transform);
+        this.retryButton.enabled = false;
+
+        this.menuButton = new DeathScreenMenuButton(this.scene, this.canvas.gameObject, new Vector2(192, 32), undefined, undefined, this.canvas.gameObject.transform);
+        this.menuButton.enabled = false;
+
+        this.transform.position = new Vector2(128, 128);
+        this.transform.scale = new Vector2(4, 4);
+
+        this.canvas.gameObject.transform.position = Vector2.zero;
+        this.canvas.gameObject.transform.scale = Vector2.one;
+    }
+
+    OnAnimationComplete()
+    {
+        this.retryButton.enabled = true;
+        this.menuButton.enabled = true;
+    }
+}
 
 export class PlayerCollider extends AABB
 {
@@ -395,6 +441,8 @@ export class PlayerController extends LivingEntity
     {
         let _particle = new DeathParticle(this.gameObject.scene);
         _particle.transform.position = this.gameObject.transform.position;
+
+        let _deathScreen = new PlayerDeathScreen(this.gameObject.scene);
 
         this.UnbindListeners();
 

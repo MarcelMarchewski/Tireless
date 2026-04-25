@@ -78,8 +78,6 @@ export class LivingEntity extends Component
     set health(_value)
     {
         this._health = _value;
-
-        this.Base_OnHealthChanged(_value);
     }
 
     get health()

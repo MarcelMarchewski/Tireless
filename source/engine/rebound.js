@@ -2793,12 +2793,6 @@ export class UICanvas extends Component
             return;
         }
 
-        if (!_currentRemoved && _elementIndex < this._elements.indexOf(this._currentElement))
-        {
-            this._currentElement--;
-            return;
-        }
-
         if (_currentRemoved)
         {
             const _nextElement = this.Internal_FindNextInteractable(_elementIndex - 1, 1);
@@ -2877,8 +2871,10 @@ export class Timer extends Component
 
 export class Scene
 {
-    constructor()
+    constructor(name="Scene")
     {
+        this.name = name;
+
         this.root = new GameObject(this, "Scene Root", null);
 
         this.colliderManager = this.root.AddComponent(ColliderManager);
@@ -2998,7 +2994,7 @@ export class Engine
         this.musicMixer = new AudioMixer("musicAudioMixer", 0.7, undefined, this.masterMixer);
         this.dialogueMixer = new AudioMixer("dialogueAudioMixer", 0.7, undefined, this.masterMixer);
 
-        this.persistentScene = new Scene();
+        this.persistentScene = new Scene("PersistentScene");
         this.currentScene = null;
 
         this._deltaTime = 0;
@@ -3071,6 +3067,21 @@ export class Engine
         this.ctx.clearRect(0, 0, this.c.width, this.c.height);
 
         this.ctx.scale(this.scale.x, this.scale.y);
+
+        this._renderQueue.sort(
+        (_a, _b) => 
+        { 
+            let _layerA = _a.sprite ? _a.sprite.layer : _a.layer;
+            let _layerB  = _b.sprite ? _b.sprite.layer : _b.layer;
+
+            if (_layerA == _layerB)
+            {
+                return this._renderQueue.indexOf(_a) - this._renderQueue.indexOf(_b);
+            }
+
+            return _layerA - _layerB;
+        }
+        );
 
         for (let i = 0; i < this._renderQueue.length; i++)
         {

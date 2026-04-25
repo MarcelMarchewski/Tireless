@@ -59,7 +59,7 @@ export class SplashScreen extends Scene
 {
     constructor()
     {
-        super();
+        super("SplashScreen");
 
         this.backgroundTexture = new Image();
         this.backgroundTexture.src = "source/tireless/resources/textures/SplashScreen/splashScreenBackground.png";

@@ -5,9 +5,28 @@ import
     Sprite,
     Animator,
     AnimationClip,
+    TextData,
+    UICanvas,
+    UIElement,
     Vector2,
     Engine
 } from "/source/engine/rebound.js";
+
+import
+{
+    MainMenu
+} from "/source/tireless/scenes/mainMenu.js";
+
+import
+{
+    Alleyway
+} from "/source/tireless/scenes/alleyway.js";
+
+import
+{
+    LevelTransition,
+    LevelTransitionFader
+} from "/source/tireless/scenes/levelTransition.js";
 
 export class BlockUI extends GameObject
 {
@@ -108,5 +127,74 @@ export class EnemyHealthUI extends GameObject
     OnDrainAnimationComplete()
     {
 
+    }
+}
+
+class SceneSwapButton extends UIElement
+{
+    constructor(gameObject, canvas, animator, target, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
+    {   
+        super(gameObject, canvas, animator, textData, width, height, sfx, interactable);
+
+        this.target = target;
+    }
+
+    OnUIClickEnd()
+    {
+        this.target();
+    }
+}
+
+export class DeathScreenMenuButton extends GameObject
+{
+    constructor(scene, currentCanvasObject, localPosition, name="MenuButton", text="MAIN MENU", parent=null)
+    {
+        super(scene, name, parent);
+        
+        this.SwapScene = this.SwapScene.bind(this);
+
+        this.texture = new Image();
+        this.texture.src = "source/tireless/resources/textures/UI/tirelessDeathScreenButton.png";
+
+        this.buttonAnimationClip = new AnimationClip("ButtonAnimation", 0, 3, 0, false, false);
+
+        this.transform.localPosition = localPosition;
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, 450, undefined, new Vector2(64, 32)));
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.buttonAnimationClip]);
+        
+        this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, this.SwapScene, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, 455), 64, 32);
+    }
+
+    SwapScene()
+    {
+        let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition("Main Menu", MainMenu)); });
+    }
+}
+
+export class DeathScreenRetryButton extends GameObject
+{
+    constructor(scene, currentCanvasObject, localPosition, name="RetryButton", text="RETRY", parent=null)
+    {
+        super(scene, name, parent);
+        
+        this.SwapScene = this.SwapScene.bind(this);
+
+        this.texture = new Image();
+        this.texture.src = "source/tireless/resources/textures/UI/tirelessDeathScreenButton.png";
+
+        this.buttonAnimationClip = new AnimationClip("ButtonAnimation", 0, 3, 0, false, false);
+
+        this.transform.localPosition = localPosition;
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, 450, undefined, new Vector2(64, 32)));
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.buttonAnimationClip]);
+        
+        this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, this.SwapScene, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, 455), 64, 32);
+    }
+
+    SwapScene()
+    {
+        let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition(this.scene.name, this.scene.constructor)); });
     }
 }

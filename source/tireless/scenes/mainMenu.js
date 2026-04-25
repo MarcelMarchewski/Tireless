@@ -50,7 +50,7 @@ class EntityToggleButton extends UIElement
     }
 }
 
-class SceneSwapButton extends UIElement
+class SwapButton extends UIElement
 {
     constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
     {   
@@ -61,7 +61,7 @@ class SceneSwapButton extends UIElement
     {
         this.gameObject.scene.musicPlayer.onEnded = null;
         
-        this.gameObject.scene.OnPlayButton(this.target);
+        this.gameObject.scene.OnSwapButton();
     }
 }
 
@@ -282,7 +282,7 @@ class PlayButton extends GameObject
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.uiButtonTexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 32)));
         this.animator = this.AddComponent(Animator, this.renderer, 4, [this.scene.buttonAnimationClip]);
         
-        this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
+        this.sceneSwapper = this.AddComponent(SwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
     }
 }
 
@@ -305,7 +305,7 @@ export class MainMenu extends Scene
 {
     constructor()
     {
-        super();
+        super("Main Menu");
 
         this.backgroundTexture = new Image();
         this.backgroundTexture.src = "source/tireless/resources/textures/MainMenu/tirelessTitleBackground.png";
@@ -367,8 +367,8 @@ export class MainMenu extends Scene
         this.musicPlayer.Play();
     }
 
-    OnPlayButton()
+    OnSwapButton()
     {
-        let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Alleyway", Alleyway, undefined, new Vector2(5, 5))); });
+        let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Alleyway", Alleyway)); });
     }
 }
