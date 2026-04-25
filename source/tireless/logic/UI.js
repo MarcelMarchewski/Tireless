@@ -153,6 +153,8 @@ export class DeathScreenMenuButton extends GameObject
         
         this.SwapScene = this.SwapScene.bind(this);
 
+        this.clicked = false;
+
         this.texture = new Image();
         this.texture.src = "source/tireless/resources/textures/UI/tirelessDeathScreenButton.png";
 
@@ -168,7 +170,11 @@ export class DeathScreenMenuButton extends GameObject
 
     SwapScene()
     {
+        if (this.clicked) { return; }
+
         let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition("Main Menu", MainMenu)); });
+
+        this.clicked = true;
     }
 }
 
@@ -180,6 +186,8 @@ export class DeathScreenRetryButton extends GameObject
         
         this.SwapScene = this.SwapScene.bind(this);
 
+        this.clicked = false;
+
         this.texture = new Image();
         this.texture.src = "source/tireless/resources/textures/UI/tirelessDeathScreenButton.png";
 
@@ -195,6 +203,10 @@ export class DeathScreenRetryButton extends GameObject
 
     SwapScene()
     {
+        if (this.clicked) { return; }
+
         let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition(this.scene.name, this.scene.constructor)); });
+
+        this.clicked = true;
     }
 }
