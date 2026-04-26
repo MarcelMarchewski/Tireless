@@ -840,6 +840,11 @@ export class PlayerController extends LivingEntity
 
         this.animator.JumpToFrame(_frame);
     }
+
+    OnDestroy()
+    {
+        this.UnbindListeners();
+    }
 }
 
 export class Player extends GameObject

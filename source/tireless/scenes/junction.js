@@ -45,16 +45,11 @@ import
     LevelTransitionFader
 } from "/source/tireless/scenes/levelTransition.js";
 
-import
+export class Junction extends Scene
 {
-    Junction
-} from "/source/tireless/scenes/junction.js";
-
-export class Alleyway extends Scene
-{
-    constructor(playerSpawnPosition=new Vector2(72, 128))
+    constructor(playerSpawnPosition=new Vector2(16, 128))
     {
-        super("Alleyway");
+        super("Junction");
 
         this.playerSpawnPosition = playerSpawnPosition;
 
@@ -91,10 +86,10 @@ export class Alleyway extends Scene
 
     Start()
     {
-        this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/alleyway.json");
+        this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/junction.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
-        this.foregroundRenderer = new GameObject(this, "Foreground Renderer").AddComponent(TilemapRenderer, new Sprite(this.foregroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/alleywayProps.json");
+        this.foregroundRenderer = new GameObject(this, "Foreground Renderer").AddComponent(TilemapRenderer, new Sprite(this.foregroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/junctionProps.json");
         this.foregroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.player = new Player(this);
@@ -120,13 +115,13 @@ export class Alleyway extends Scene
         this.topWallCol = new GameObject(this, "TopWallCol").AddComponent(WorldCollider, new Vector2(256, 32));
         this.bottomWallCol = new GameObject(this, "BottomWallCol").AddComponent(WorldCollider, new Vector2(256, 32));
 
-        this.leftWallCol.gameObject.transform.position = new Vector2(32, 128);
+        this.leftWallCol.gameObject.transform.position = new Vector2(-16, 128);
         this.rightWallCol.gameObject.transform.position = new Vector2(272, 128);
 
-        this.topWallCol.gameObject.transform.position = new Vector2(128, 212);
-        this.bottomWallCol.gameObject.transform.position = new Vector2(128, 48);
+        this.topWallCol.gameObject.transform.position = new Vector2(128, 272);
+        this.bottomWallCol.gameObject.transform.position = new Vector2(128, -16);
 
-        this.exit = new LevelSwapper(this, new Vector2(16, 16), () => { this.player.Base_Destroy(); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Junction", Junction)); }); });
+        this.exit = new LevelSwapper(this, new Vector2(16, 16));
         this.exit.transform.position = new Vector2(240, 128);
 
         this.exit.unlockedObject.transform.rotation = -90;

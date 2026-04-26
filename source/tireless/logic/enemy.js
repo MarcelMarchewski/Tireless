@@ -125,7 +125,7 @@ export class EnemyDashTimer extends Timer
 
 export class EnemyStunTimer extends Timer
 {
-    constructor(gameObject, startValue=5, autoPlay=false, destructive=false)
+    constructor(gameObject, startValue=3.5, autoPlay=false, destructive=false)
     {
         super(gameObject, startValue, autoPlay, destructive);
     }
@@ -336,6 +336,8 @@ export class EnemyController extends LivingEntity
     {
         let _particle = new DeathParticle(this.gameObject.scene);
         _particle.transform.position = this.gameObject.transform.position;
+
+        this.gameObject.scene.enemyCounter -= 1;
 
         this.gameObject.Base_Destroy();
     }

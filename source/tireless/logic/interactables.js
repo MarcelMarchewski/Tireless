@@ -5,6 +5,8 @@ import
     SpriteRenderer,
     TilemapRenderer,
     Sprite,
+    AnimationClip,
+    Animator,
     AABB,
     Vector2,
     Engine
@@ -61,5 +63,55 @@ export class HealthBox extends GameObject
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, undefined, undefined, new Vector2(16, 16)));
 
         this.collider = this.AddComponent(HealthBoxCollider);
+    }
+}
+
+export class LevelSwapperCollider extends InteractableCollider
+{
+    constructor(gameObject, dimensions, swapOperation)
+    {
+        super(gameObject, dimensions);
+
+        this.swapOperation = swapOperation;
+    }
+
+    OnCollisionDetected(_other)
+    {
+        if (_other instanceof PlayerCollider)
+        {
+            if (this.gameObject.unlockedObject.renderer.enabled)
+            {
+                this.swapOperation();
+            }
+        }
+    }
+}
+
+export class LevelSwapper extends GameObject
+{
+    constructor(scene, dimensions, swapOperation, name="LevelSwapper", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.lockedTexture = new Image();
+        this.lockedTexture.src = "source/tireless/resources/textures/Shared/tirelessLevelLocked.png";
+
+        this.unlockedTexture = new Image();
+        this.unlockedTexture.src = "source/tireless/resources/textures/Shared/tirelessLevelUnlocked.png";
+
+        this.lockedAnim = new AnimationClip("LockedAnim", 0, 6, 0.1, true, true);
+        this.unlockedAnim = new AnimationClip("UnlockedAnim", 0, 4, 0.1, true, true);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.lockedTexture, undefined, undefined, new Vector2(16, 16)));
+        this.animator = this.AddComponent(Animator, this.renderer, 7, [this.lockedAnim]);
+
+        this.unlockedObject = new GameObject(this.scene, "UnlockedObject", this.transform);
+
+        this.unlockedObject.renderer = this.unlockedObject.AddComponent(SpriteRenderer, new Sprite(this.unlockedTexture, undefined, undefined, new Vector2(16, 20)));
+        this.unlockedObject.animator = this.unlockedObject.AddComponent(Animator, this.unlockedObject.renderer, 5, [this.unlockedAnim]);
+
+        this.unlockedObject.renderer.enabled = false;
+
+        this.collider = this.AddComponent(LevelSwapperCollider, dimensions, swapOperation);
     }
 }
