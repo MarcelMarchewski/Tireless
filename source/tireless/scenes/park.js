@@ -60,10 +60,12 @@ export class Park extends Scene
     {
         super("Park");
 
-        if (Engine.I.persistentScene.parkTransferProperties == undefined)
+        if (Engine.I.persistentScene.parkLevelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.parkTransferProperties = new GameObject(Engine.I.persistentScene, "ParkTransferProperties").AddComponent(LevelTransferProperties, false);
+            Engine.I.persistentScene.parkLevelTransferProperties = new GameObject(Engine.I.persistentScene, "ParkLevelTransferProperties").AddComponent(LevelTransferProperties, false);
         }
+
+        this.levelTransferProperties = Engine.I.persistentScene.parkLevelTransferProperties;
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -117,6 +119,23 @@ export class Park extends Scene
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
 
+        if (this.levelTransferProperties.healthBoxUsed == undefined)
+        {
+            this.levelTransferProperties.healthBoxUsed = [false, false];
+        }
+
+        if (!this.levelTransferProperties.healthBoxUsed[0])
+        {
+            const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed[0] = true; });
+            _healthBox.transform.position = new Vector2(48, 48);
+        }
+
+        if (!this.levelTransferProperties.healthBoxUsed[1])
+        {
+            const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed[1] = true; });
+            _healthBox.transform.position = new Vector2(208, 48);
+        }
+
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);
 
@@ -156,7 +175,7 @@ export class Park extends Scene
 
         this.enemies = [];
 
-        if (!Engine.I.persistentScene.parkTransferProperties.clear)
+        if (!this.levelTransferProperties.clear)
         {
             for (let i = 0; i < 2; i++)
             {
@@ -165,8 +184,8 @@ export class Park extends Scene
                 this.enemies.push(_enemy);
             }
 
-            this.enemies[0].transform.position = new Vector2(48, 0);
-            this.enemies[1].transform.position = new Vector2(208, 0);
+            this.enemies[0].transform.position = new Vector2(48, 16);
+            this.enemies[1].transform.position = new Vector2(208, 16);
 
             this.enemyCounter = this.enemies.length;
         }
@@ -192,7 +211,7 @@ export class Park extends Scene
 
         if (this._enemyCounter == 0)
         {
-            Engine.I.persistentScene.parkTransferProperties.clear = true;
+            this.levelTransferProperties.clear = true;
         }
     }
 }

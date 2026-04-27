@@ -70,6 +70,43 @@ export class HealthBox extends GameObject
     }
 }
 
+export class KeyCollider extends InteractableCollider
+{
+    constructor(gameObject, dimensions, id, onInteractableUsed=() => {  })
+    {
+        super(gameObject, dimensions, onInteractableUsed);
+
+        this.id = id;
+    }
+
+    OnCollisionDetected(_other)
+    {
+        if (_other instanceof PlayerCollider)
+        {
+            Engine.I.persistentScene.transferProperties.keys[this.id] = true;
+
+            this.gameObject.Base_Destroy();
+
+            this.onInteractableUsed();
+        }
+    }
+}
+
+export class Key extends GameObject
+{
+    constructor(scene, id, onInteractableUsed=() => {  }, name="Key", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.texture = new Image();
+        this.texture.src = "source/tireless/resources/textures/Shared/tirelessKey.png";
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, undefined, undefined, new Vector2(16, 16)));
+
+        this.collider = this.AddComponent(KeyCollider, new Vector2(16, 16), id, onInteractableUsed);
+    }
+}
+
 export class LevelSwapperCollider extends InteractableCollider
 {
     constructor(gameObject, dimensions, swapOperation)

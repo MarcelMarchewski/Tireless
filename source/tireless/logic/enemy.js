@@ -369,7 +369,7 @@ export class RangedEnemyBulletCollider extends AABB
     {
         super(gameObject, dimensions);
 
-        this.ignoreTypes = [RangedEnemyCollider, WaterCollider];
+        this.ignoreTypes = [RangedEnemyCollider, WaterCollider, InteractableCollider];
 
         this.speed = 250;
         this.direction = direction;

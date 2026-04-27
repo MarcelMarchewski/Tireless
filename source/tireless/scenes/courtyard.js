@@ -31,7 +31,8 @@ import
 import
 {
     HealthBox,
-    LevelSwapper
+    LevelSwapper,
+    Key
 } from "/source/tireless/logic/interactables.js";
 
 import
@@ -64,10 +65,12 @@ export class Courtyard extends Scene
     {
         super("Courtyard");
 
-        if (Engine.I.persistentScene.courtyardTransferProperties == undefined)
+        if (Engine.I.persistentScene.levelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.courtyardTransferProperties = new GameObject(Engine.I.persistentScene, "CourtyardTransferProperties").AddComponent(LevelTransferProperties, false);
+            Engine.I.persistentScene.courtyardLevelTransferProperties = new GameObject(Engine.I.persistentScene, "CourtyardLevelTransferProperties").AddComponent(LevelTransferProperties, false);
         }
+
+        this.levelTransferProperties = Engine.I.persistentScene.courtyardLevelTransferProperties;
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -115,12 +118,6 @@ export class Courtyard extends Scene
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
 
-        if (!Engine.I.persistentScene.courtyardTransferProperties.healthBoxUsed)
-        {
-            const _healthBox = new HealthBox(this, () => { Engine.I.persistentScene.courtyardTransferProperties.healthBoxUsed = true; });
-            _healthBox.transform.position = new Vector2(196, 128);
-        }
-
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);
 
@@ -156,9 +153,15 @@ export class Courtyard extends Scene
         this.junctionExit.renderer.enabled = false;
         this.junctionExit.unlockedObject.renderer.enabled = true;
 
+        if (Engine.I.persistentScene.transferProperties.keys[0] == false)
+        {
+            const _key = new Key(this, 0);
+            _key.transform.position = new Vector2(196, 128);
+        }
+
         this.enemies = [];
 
-        if (!Engine.I.persistentScene.courtyardTransferProperties.clear)
+        if (!this.levelTransferProperties.clear)
         {
             for (let i = 0; i < 4; i++)
             {
@@ -196,7 +199,7 @@ export class Courtyard extends Scene
 
         if (this._enemyCounter == 0)
         {
-            Engine.I.persistentScene.courtyardTransferProperties.clear = true;
+            this.levelTransferProperties.clear = true;
         }
     }
 }

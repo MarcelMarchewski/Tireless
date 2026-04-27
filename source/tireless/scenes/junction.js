@@ -69,10 +69,12 @@ export class Junction extends Scene
     {
         super("Junction");
 
-        if (Engine.I.persistentScene.junctionTransferProperties == undefined)
+        if (Engine.I.persistentScene.junctionLevelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.junctionTransferProperties = new GameObject(Engine.I.persistentScene, "JunctionTransferProperties").AddComponent(LevelTransferProperties, false);
+            Engine.I.persistentScene.junctionLevelTransferProperties = new GameObject(Engine.I.persistentScene, "JunctionLevelTransferProperties").AddComponent(LevelTransferProperties, false);
         }
+
+        this.levelTransferProperties = Engine.I.persistentScene.junctionLevelTransferProperties;
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -120,9 +122,9 @@ export class Junction extends Scene
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
 
-        if (!Engine.I.persistentScene.junctionTransferProperties.healthBoxUsed)
+        if (!this.levelTransferProperties.healthBoxUsed)
         {
-            const _healthBox = new HealthBox(this, () => { Engine.I.persistentScene.junctionTransferProperties.healthBoxUsed = true; });
+            const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed = true; });
             _healthBox.transform.position = new Vector2(128, 128);
         }
 
@@ -179,7 +181,7 @@ export class Junction extends Scene
 
         this.enemies = [];
 
-        if (!Engine.I.persistentScene.junctionTransferProperties.clear)
+        if (!this.levelTransferProperties.clear)
         {
             for (let i = 0; i < 2; i++)
             {
@@ -223,7 +225,7 @@ export class Junction extends Scene
 
             this.parkExit.unlockedObject.renderer.enabled = true;
 
-            Engine.I.persistentScene.junctionTransferProperties.clear = true;
+            this.levelTransferProperties.clear = true;
         }
     }
 }

@@ -259,6 +259,8 @@ export class DeathScreenRetryButton extends GameObject
     {
         if (this.clicked) { return; }
 
+        this.scene.levelTransferProperties.healthBoxUsed = undefined;
+
         let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition(this.scene.name, this.scene.constructor)); });
 
         this.clicked = true;

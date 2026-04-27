@@ -63,10 +63,12 @@ export class Alleyway extends Scene
             Engine.I.persistentScene.transferProperties = new GameObject(Engine.I.persistentScene, "TransferProperties").AddComponent(TransferProperties, new Vector2(72, 128), 100);
         }
 
-        if (Engine.I.persistentScene.alleywayTransferProperties == undefined)
+        if (Engine.I.persistentScene.alleywayLevelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.alleywayTransferProperties = new GameObject(Engine.I.persistentScene, "AlleywayTransferProperties").AddComponent(LevelTransferProperties, false);
+            Engine.I.persistentScene.alleywayLevelTransferProperties = new GameObject(Engine.I.persistentScene, "AlleywayLevelTransferProperties").AddComponent(LevelTransferProperties, false);
         }
+
+        this.levelTransferProperties = Engine.I.persistentScene.alleywayLevelTransferProperties;
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -138,7 +140,7 @@ export class Alleyway extends Scene
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
-        if (!Engine.I.persistentScene.alleywayTransferProperties.clear)
+        if (!this.levelTransferProperties.clear)
         {
             const _enemy = new Enemy(this);
             _enemy.transform.position = new Vector2(196, 128);
@@ -173,7 +175,7 @@ export class Alleyway extends Scene
 
             this.exit.unlockedObject.renderer.enabled = true;
 
-            Engine.I.persistentScene.alleywayTransferProperties.clear = true;
+            this.levelTransferProperties.clear = true;
         }
     }
 }
