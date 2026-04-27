@@ -162,3 +162,18 @@ export class EnemyStunParticle extends Particle
         this.transform.scale = new Vector2(1.5, 1.5);
     }
 }
+
+export class RangedEnemyMuzzleFlashParticle extends Particle
+{
+    constructor(scene)
+    {
+        let _texture = new Image();
+        _texture.src = "source/tireless/resources/textures/Shared/tirelessMuzzleFlash.png";
+
+        let _sprite = new Sprite(_texture, Engine.I.PARTICLE_DEFAULT_LAYER, undefined, new Vector2(16, 16));
+
+        let _animationClip = new AnimationClip("MuzzleFlashAnim", 0, 2, 0.1, false, true);
+
+        super(scene, _sprite, 3, _animationClip, true, "MuzzleFlash", null);
+    }
+}

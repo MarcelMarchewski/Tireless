@@ -5,6 +5,7 @@ import
     Sprite,
     Animator,
     AnimationClip,
+    Component,
     TextData,
     UICanvas,
     UIElement,
@@ -90,6 +91,57 @@ export class DashUI extends GameObject
     }
 }
 
+export class HealthUIUpdater extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+    }
+
+    Update()
+    {
+        if (this.gameObject.scene.player == undefined) { return; }
+
+        switch (this.gameObject.scene.player.controller.health)
+        {
+            case (100):
+            {
+                this.gameObject.animator.JumpToFrame(0);
+
+                break;
+            }
+
+            case (75):
+            {
+                this.gameObject.animator.JumpToFrame(5);
+
+                break;
+            }
+
+            case (50):
+            {
+                this.gameObject.animator.JumpToFrame(10);
+
+                break;
+            }
+
+            case (25):
+            {
+                this.gameObject.animator.JumpToFrame(15);
+
+                break;
+            }
+
+            case (0):
+            {
+                this.gameObject.animator.JumpToFrame(18);
+
+                break;
+            }
+        }
+    }
+}
+
 export class HealthUI extends GameObject
 {
     constructor(scene, name="HealthUI", parent=null)
@@ -102,6 +154,8 @@ export class HealthUI extends GameObject
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.healthUITexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(64, 16)));
         this.animator = this.AddComponent(Animator, this.renderer, 19, [this.drainBarAnim]);
+
+        this.updater = this.AddComponent(HealthUIUpdater);
     }
 
     OnDrainAnimationComplete()

@@ -25,17 +25,19 @@ import
 
 export class InteractableCollider extends AABB
 {
-    constructor(gameObject, dimensions)
+    constructor(gameObject, dimensions, onInteractableUsed=() => {  })
     {
         super(gameObject, dimensions);
+
+        this.onInteractableUsed = onInteractableUsed;
     }
 }
 
 export class HealthBoxCollider extends InteractableCollider
 {
-    constructor(gameObject, dimensions=new Vector2(16, 16))
+    constructor(gameObject, dimensions=new Vector2(16, 16), onInteractableUsed=() => {  })
     {
-        super(gameObject, dimensions);
+        super(gameObject, dimensions, onInteractableUsed);
     }
 
     OnCollisionDetected(_other)
@@ -47,13 +49,15 @@ export class HealthBoxCollider extends InteractableCollider
             this.gameObject.scene.player.controller.Heal(25);
 
             this.gameObject.Base_Destroy();
+
+            this.onInteractableUsed();
         }
     }
 }
 
 export class HealthBox extends GameObject
 {
-    constructor(scene, name="HealthBox", parent=null)
+    constructor(scene, onInteractableUsed, name="HealthBox", parent=null)
     {
         super(scene, name, parent);
 
@@ -62,7 +66,7 @@ export class HealthBox extends GameObject
 
         this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, undefined, undefined, new Vector2(16, 16)));
 
-        this.collider = this.AddComponent(HealthBoxCollider);
+        this.collider = this.AddComponent(HealthBoxCollider, undefined, onInteractableUsed);
     }
 }
 
@@ -82,6 +86,8 @@ export class LevelSwapperCollider extends InteractableCollider
             if (this.gameObject.unlockedObject.renderer.enabled)
             {
                 this.swapOperation();
+
+                this.Base_Destroy();
             }
         }
     }

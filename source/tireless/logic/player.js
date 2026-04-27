@@ -22,7 +22,8 @@ import
 import
 {
     EnemyCollider,
-    EnemyController
+    EnemyController,
+    RangedEnemyBulletCollider
 } from "/source/tireless/logic/enemy.js";
 
 import 
@@ -205,6 +206,7 @@ export class PlayerController extends LivingEntity
         this.damageSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_PlayerDamaged.wav", Engine.I.sfxMixer);
         this.healSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Heal.wav", Engine.I.sfxMixer);
         this.attackSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_SwordSwing.wav", Engine.I.sfxMixer);
+        this.dashSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Dash.wav", Engine.I.sfxMixer);
 
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
         this.dashCursor.renderer.enabled = false;
@@ -291,41 +293,55 @@ export class PlayerController extends LivingEntity
 
             if (_direction.magnitude > 0)
             {
-                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 32, 1, undefined, [EnemyCollider]);
+                const _hit = this.gameObject.scene.colliderManager.Raycast(this.gameObject.transform.position, _direction, 32, 1, undefined, [EnemyCollider, RangedEnemyBulletCollider]);
 
                 if (_hit[1] != undefined)
                 {
-                    const _enemy = _hit[1].gameObject.GetComponent(EnemyController);
-
-                    if (_enemy.dashing)
+                    if (_hit[1] instanceof EnemyCollider)
                     {
-                        if (this.canParry)
+                        const _enemy = _hit[1].gameObject.GetComponent(EnemyController);
+
+                        if (_enemy.dashing)
                         {
-                            _enemy.dashing = false;
-                            _enemy.dashTarget = null;
+                            if (this.canParry)
+                            {
+                                _enemy.dashing = false;
+                                _enemy.dashTarget = null;
 
-                            _enemy.stunned = true;
+                                _enemy.stunned = true;
 
-                            _enemy.stunTimer.Play();
+                                _enemy.stunTimer.Play();
 
-                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordParry.wav");
-                            this.blockParrySFX.Play();
+                                this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordParry.wav");
+                                this.blockParrySFX.Play();
 
-                            let _particle = new SwordParryParticle(this.gameObject.scene);
-                            _particle.transform.position = _hit[0];
+                                let _particle = new SwordParryParticle(this.gameObject.scene);
+                                _particle.transform.position = _hit[0];
+                            }
+
+                            else
+                            {
+                                _enemy.dashing = false;
+                                _enemy.dashTarget = null;
+
+                                this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordClash.wav");
+                                this.blockParrySFX.Play();
+
+                                let _particle = new BlockParticle(this.gameObject.scene);
+                                _particle.transform.position = _hit[0];
+                            }
                         }
+                    }
 
-                        else
-                        {
-                            _enemy.dashing = false;
-                            _enemy.dashTarget = null;
+                    else
+                    {
+                        this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordClash.wav");
+                        this.blockParrySFX.Play();
 
-                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordClash.wav");
-                            this.blockParrySFX.Play();
+                        let _particle = new BlockParticle(this.gameObject.scene);
+                        _particle.transform.position = _hit[0];
 
-                            let _particle = new BlockParticle(this.gameObject.scene);
-                            _particle.transform.position = _hit[0];
-                        }
+                        _hit[1].gameObject.Base_Destroy();
                     }
                 }
             }
@@ -416,10 +432,6 @@ export class PlayerController extends LivingEntity
 
             let _bloodParticle = new BloodParticle(this.gameObject.scene);
             _bloodParticle.transform.position = this.gameObject.transform.position;
-
-            const _animator = this.gameObject.scene.healthUI.animator;
-
-            _animator.JumpToFrame(_animator.currentFrame + 5);
         }
 
         else
@@ -430,10 +442,6 @@ export class PlayerController extends LivingEntity
             let _healParticle = new HealParticle(this.gameObject.scene);
             _healParticle.transform.parent = this.gameObject.transform;
             _healParticle.transform.localPosition = Vector2.zero;
-
-            const _animator = this.gameObject.scene.healthUI.animator;
-
-            _animator.JumpToFrame(_animator.currentFrame - 5);
         }
     }
 
@@ -481,6 +489,9 @@ export class PlayerController extends LivingEntity
             this.dashing = true;
 
             this.gameObject.scene.dashUI.animator.SetClip("ActiveBarAnim");
+
+            this.dashSFX.Stop();
+            this.dashSFX.Play();
         }
 
         else

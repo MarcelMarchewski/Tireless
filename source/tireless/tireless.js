@@ -2,6 +2,7 @@ import
 {
     Vector2,
     AABB,
+    Component,
     Engine
 } from "/source/engine/rebound.js";
 
@@ -10,7 +11,36 @@ import
     SplashScreen
 } from "/source/tireless/scenes/splashScreen.js";
 
+export class TransferProperties extends Component
+{
+    constructor(gameObject, position, health)
+    {
+        super(gameObject);
+
+        this.position = position;
+        this.health = health;
+    }
+}
+
+export class LevelTransferProperties extends TransferProperties
+{
+    constructor(gameObject, clear)
+    {
+        super(gameObject, undefined, undefined);
+
+        this.clear = clear;
+    }
+}
+
 export class WorldCollider extends AABB
+{
+    constructor(gameObject, dimensions)
+    {
+        super(gameObject, dimensions);
+    }
+}
+
+export class WaterCollider extends AABB
 {
     constructor(gameObject, dimensions)
     {

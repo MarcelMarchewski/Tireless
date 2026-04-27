@@ -42,6 +42,16 @@ export class LivingEntity extends Component
         
     }
 
+    Base_OnHealthSet(_value)
+    {
+        this.OnHealthSet(_value);
+    }
+
+    OnHealthSet(_value)
+    {
+
+    }
+
     Base_OnHealthChanged(_amount)
     {
         this._health = Math.min(Math.max(this._health, 0), this._maxHealth);
@@ -78,6 +88,8 @@ export class LivingEntity extends Component
     set health(_value)
     {
         this._health = _value;
+
+        this.Base_OnHealthSet(_value);
     }
 
     get health()
