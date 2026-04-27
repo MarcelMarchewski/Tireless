@@ -17,7 +17,8 @@ import
 
 import
 {
-    Enemy
+    Enemy,
+    RangedEnemy
 } from "/source/tireless/logic/enemy.js";
 
 import 
@@ -36,6 +37,7 @@ import
 import
 {
     WorldCollider,
+    WaterCollider,
     PlayerOnlyCollider,
     TransferProperties,
     LevelTransferProperties
@@ -52,29 +54,32 @@ import
     Junction
 } from "/source/tireless/scenes/junction.js";
 
-export class Alleyway extends Scene
+import
+{
+    Shop
+} from "/source/tireless/scenes/shop.js";
+
+export class Town extends Scene
 {
     constructor()
     {
-        super("Alleyway");
+        super("Town");
 
-        if (Engine.I.persistentScene.transferProperties == undefined)
+        if (Engine.I.persistentScene.townLevelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.transferProperties = new GameObject(Engine.I.persistentScene, "TransferProperties").AddComponent(TransferProperties, new Vector2(72, 128), 100);
+            Engine.I.persistentScene.townLevelTransferProperties = new GameObject(Engine.I.persistentScene, "TownLevelTransferProperties").AddComponent(LevelTransferProperties);
         }
 
-        if (Engine.I.persistentScene.alleywayLevelTransferProperties == undefined)
-        {
-            Engine.I.persistentScene.alleywayLevelTransferProperties = new GameObject(Engine.I.persistentScene, "AlleywayLevelTransferProperties").AddComponent(LevelTransferProperties);
-        }
-
-        this.levelTransferProperties = Engine.I.persistentScene.alleywayLevelTransferProperties;
+        this.levelTransferProperties = Engine.I.persistentScene.townLevelTransferProperties;
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
 
         this.enemyTexture = new Image();
         this.enemyTexture.src = "source/tireless/resources/textures/Shared/tirelessEnemySamurai.png";
+
+        this.rangedEnemyTexture = new Image();
+        this.rangedEnemyTexture.src = "source/tireless/resources/textures/Shared/tirelessEnemyRanged.png";
 
         this.dashCursorTexture = new Image();
         this.dashCursorTexture.src = "source/tireless/resources/textures/Shared/dashCursor.png";
@@ -86,7 +91,7 @@ export class Alleyway extends Scene
         this.backgroundTexture.src = "source/tireless/resources/textures/Shared/tirelessAlleyway.png";
 
         this.foregroundTexture = new Image();
-        this.foregroundTexture.src = "source/tireless/resources/textures/Shared/tirelessAlleywayProps.png";
+        this.foregroundTexture.src = "source/tireless/resources/textures/Shared/tirelessShop.png";
 
         this.blockUITexture = new Image();
         this.blockUITexture.src = "source/tireless/resources/textures/UI/tirelessBlockSlider.png";
@@ -103,13 +108,14 @@ export class Alleyway extends Scene
 
     Start()
     {
-        this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/alleyway.json");
+        this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/town.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
-        this.foregroundRenderer = new GameObject(this, "Foreground Renderer").AddComponent(TilemapRenderer, new Sprite(this.foregroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/alleywayProps.json");
+        this.foregroundRenderer = new GameObject(this, "Town Renderer").AddComponent(TilemapRenderer, new Sprite(this.foregroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/townBuildings.json");
         this.foregroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.player = new Player(this);
+
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
 
         this.blockUI = new BlockUI(this);
@@ -127,27 +133,52 @@ export class Alleyway extends Scene
         this.topWallCol = new GameObject(this, "TopWallCol").AddComponent(WorldCollider, new Vector2(256, 32));
         this.bottomWallCol = new GameObject(this, "BottomWallCol").AddComponent(WorldCollider, new Vector2(256, 32));
 
-        this.leftWallCol.gameObject.transform.position = new Vector2(32, 128);
+        this.lBuildingCol = new GameObject(this, "TLBuildingCol").AddComponent(WorldCollider, new Vector2(128, 192));
+        this.rBuildingCol = new GameObject(this, "TRBuildingCol").AddComponent(WorldCollider, new Vector2(128, 192));
+
+        this.leftWallCol.gameObject.transform.position = new Vector2(-16, 128);
         this.rightWallCol.gameObject.transform.position = new Vector2(272, 128);
 
-        this.topWallCol.gameObject.transform.position = new Vector2(128, 212);
-        this.bottomWallCol.gameObject.transform.position = new Vector2(128, 48);
+        this.topWallCol.gameObject.transform.position = new Vector2(128, 272);
+        this.bottomWallCol.gameObject.transform.position = new Vector2(128, -16);
 
-        this.exit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(48, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Junction", Junction)); }); this.player.controller.UnbindListeners(); });
-        this.exit.transform.position = new Vector2(240, 128);
+        this.lBuildingCol.gameObject.transform.position = new Vector2(0, 128);
+        this.rBuildingCol.gameObject.transform.position = new Vector2(256, 128);
 
-        this.exit.unlockedObject.transform.rotation = -90;
+        this.junctionExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(128, 208); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Junction", Junction)); }); this.player.controller.UnbindListeners(); });
+        this.junctionExit.transform.position = new Vector2(128, 16);
 
-        this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
+        this.junctionExit.renderer.enabled = false;
+        this.junctionExit.unlockedObject.renderer.enabled = true;
+
+        this.junctionExit.transform.rotation = 180;
+
+        this.shopExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(224, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Shop", Shop)); }); this.player.controller.UnbindListeners(); });
+        this.shopExit.transform.position = new Vector2(96, 128);
+
+        this.shopExit.renderer.enabled = false;
+        this.shopExit.unlockedObject.renderer.enabled = true;
+
+        this.shopExit.transform.rotation = 90;
 
         if (this.levelTransferProperties.enemies.length == 0)
         {
-            this.levelTransferProperties.enemies = [[new Vector2(160, 128), true]];
+            this.levelTransferProperties.enemies = [[new Vector2(96, 240), true], [new Vector2(160, 240), true], [new Vector2(32, 16), true], [new Vector2(224, 16), true]];
         }
 
         if (!this.levelTransferProperties.clear)
         {
-            for (let i = 0; i < 1; i++)
+            for (let i = 0; i < 2; i++)
+            {
+                if (this.levelTransferProperties.enemies[i][1]) 
+                {
+                    const _enemy = new RangedEnemy(this, i);
+
+                    _enemy.transform.position = this.levelTransferProperties.enemies[i][0];
+                }
+            }
+
+            for (let i = 2; i < 4; i++)
             {
                 if (this.levelTransferProperties.enemies[i][1]) 
                 {
@@ -170,11 +201,9 @@ export class Alleyway extends Scene
         else
         {
             this.enemyCounter = 0;
-
-            this.exit.renderer.enabled = false;
-
-            this.exit.unlockedObject.renderer.enabled = true;
         }
+
+        this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
         let _fader = new LevelTransitionFader(this, undefined, true);
     }
@@ -187,12 +216,5 @@ export class Alleyway extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
-
-        if (this._enemyCounter == 0)
-        {
-            this.exit.renderer.enabled = false;
-
-            this.exit.unlockedObject.renderer.enabled = true;
-        }
     }
 }

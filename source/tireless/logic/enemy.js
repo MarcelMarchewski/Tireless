@@ -340,6 +340,7 @@ export class EnemyController extends LivingEntity
         let _particle = new DeathParticle(this.gameObject.scene);
         _particle.transform.position = this.gameObject.transform.position;
 
+        this.gameObject.scene.levelTransferProperties.enemies[this.gameObject.id][1] = false;
         this.gameObject.scene.enemyCounter -= 1;
 
         this.gameObject.Base_Destroy();
@@ -348,7 +349,7 @@ export class EnemyController extends LivingEntity
 
 export class Enemy extends GameObject
 {
-    constructor(scene, name="Enemy", parent=null)
+    constructor(scene, id, name="Enemy", parent=null)
     {
         super(scene, name, parent);
 
@@ -358,6 +359,8 @@ export class Enemy extends GameObject
         this.animator = this.AddComponent(Animator, this.renderer, 8, [this.fixedAnimationClip]);
         
         this.col = this.AddComponent(EnemyCollider, new Vector2(32, 32));
+
+        this.id = id;
         
         this.controller = this.AddComponent(EnemyController);
     }
@@ -602,6 +605,7 @@ export class RangedEnemyController extends EnemyController
         let _particle = new DeathParticle(this.gameObject.scene);
         _particle.transform.position = this.gameObject.transform.position;
 
+        this.gameObject.scene.levelTransferProperties.enemies[this.gameObject.id][1] = false;
         this.gameObject.scene.enemyCounter -= 1;
 
         this.gameObject.Base_Destroy();
@@ -610,7 +614,7 @@ export class RangedEnemyController extends EnemyController
 
 export class RangedEnemy extends GameObject
 {
-    constructor(scene, name="Enemy", parent=null)
+    constructor(scene, id, name="Enemy", parent=null)
     {
         super(scene, name, parent);
 
@@ -621,6 +625,8 @@ export class RangedEnemy extends GameObject
         
         this.col = this.AddComponent(RangedEnemyCollider, new Vector2(32, 32));
         
+        this.id = id;
+
         this.controller = this.AddComponent(RangedEnemyController);
     }
 }

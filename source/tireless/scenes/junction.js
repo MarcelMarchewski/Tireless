@@ -63,6 +63,11 @@ import
     Park
 } from "/source/tireless/scenes/park.js";
 
+import
+{
+    Town
+} from "/source/tireless/scenes/town.js";
+
 export class Junction extends Scene
 {
     constructor()
@@ -71,7 +76,7 @@ export class Junction extends Scene
 
         if (Engine.I.persistentScene.junctionLevelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.junctionLevelTransferProperties = new GameObject(Engine.I.persistentScene, "JunctionLevelTransferProperties").AddComponent(LevelTransferProperties, false);
+            Engine.I.persistentScene.junctionLevelTransferProperties = new GameObject(Engine.I.persistentScene, "JunctionLevelTransferProperties").AddComponent(LevelTransferProperties);
         }
 
         this.levelTransferProperties = Engine.I.persistentScene.junctionLevelTransferProperties;
@@ -179,21 +184,41 @@ export class Junction extends Scene
 
         this.parkExit.unlockedObject.transform.rotation = 180;
 
-        this.enemies = [];
+        this.townExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(128, 48); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Town", Town)); }); this.player.controller.UnbindListeners(); });
+        this.townExit.transform.position = new Vector2(128, 240);
+
+        if (Engine.I.persistentScene.transferProperties.keys[0])
+        {
+            this.townExit.renderer.enabled = false;
+            
+            this.townExit.unlockedObject.renderer.enabled = true;
+        }
+
+        if (this.levelTransferProperties.enemies.length == 0)
+        {
+            this.levelTransferProperties.enemies = [[new Vector2(128, 228), true], [new Vector2(228, 128), true]];
+        }
 
         if (!this.levelTransferProperties.clear)
         {
             for (let i = 0; i < 2; i++)
             {
-                const _enemy = new Enemy(this);
+                if (this.levelTransferProperties.enemies[i][1]) 
+                {
+                    const _enemy = new Enemy(this, i);
 
-                this.enemies.push(_enemy);
+                    _enemy.transform.position = this.levelTransferProperties.enemies[i][0];
+                }
             }
 
-            this.enemies[0].transform.position = new Vector2(128, 228);
-            this.enemies[1].transform.position = new Vector2(228, 128);
+            let _tmp = 0;
 
-            this.enemyCounter = this.enemies.length;
+            for (let i = 0; i < this.levelTransferProperties.enemies.length; i++)
+            {
+                if (this.levelTransferProperties.enemies[i][1]) { _tmp += 1; }
+            }
+
+            this.enemyCounter = _tmp;
         }
 
         else
@@ -224,8 +249,6 @@ export class Junction extends Scene
             this.parkExit.renderer.enabled = false;
 
             this.parkExit.unlockedObject.renderer.enabled = true;
-
-            this.levelTransferProperties.clear = true;
         }
     }
 }

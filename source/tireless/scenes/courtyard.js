@@ -65,9 +65,9 @@ export class Courtyard extends Scene
     {
         super("Courtyard");
 
-        if (Engine.I.persistentScene.levelTransferProperties == undefined)
+        if (Engine.I.persistentScene.courtyardLevelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.courtyardLevelTransferProperties = new GameObject(Engine.I.persistentScene, "CourtyardLevelTransferProperties").AddComponent(LevelTransferProperties, false);
+            Engine.I.persistentScene.courtyardLevelTransferProperties = new GameObject(Engine.I.persistentScene, "CourtyardLevelTransferProperties").AddComponent(LevelTransferProperties);
         }
 
         this.levelTransferProperties = Engine.I.persistentScene.courtyardLevelTransferProperties;
@@ -159,23 +159,31 @@ export class Courtyard extends Scene
             _key.transform.position = new Vector2(196, 128);
         }
 
-        this.enemies = [];
+        if (this.levelTransferProperties.enemies.length == 0)
+        {
+            this.levelTransferProperties.enemies = [[new Vector2(128, 224), true], [new Vector2(128, 32), true], [new Vector2(160, 224), true], [new Vector2(160, 32), true]];
+        }
 
         if (!this.levelTransferProperties.clear)
         {
             for (let i = 0; i < 4; i++)
             {
-                const _enemy = new Enemy(this);
+                if (this.levelTransferProperties.enemies[i][1]) 
+                {
+                    const _enemy = new Enemy(this, i);
 
-                this.enemies.push(_enemy);
+                    _enemy.transform.position = this.levelTransferProperties.enemies[i][0];
+                }
             }
 
-            this.enemies[0].transform.position = new Vector2(128, 224);
-            this.enemies[1].transform.position = new Vector2(128, 32);
-            this.enemies[2].transform.position = new Vector2(160, 224);
-            this.enemies[3].transform.position = new Vector2(160, 32);
+            let _tmp = 0;
 
-            this.enemyCounter = this.enemies.length;
+            for (let i = 0; i < this.levelTransferProperties.enemies.length; i++)
+            {
+                if (this.levelTransferProperties.enemies[i][1]) { _tmp += 1; }
+            }
+
+            this.enemyCounter = _tmp;
         }
 
         else
@@ -196,10 +204,5 @@ export class Courtyard extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
-
-        if (this._enemyCounter == 0)
-        {
-            this.levelTransferProperties.clear = true;
-        }
     }
 }

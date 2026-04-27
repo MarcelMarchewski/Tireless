@@ -26,11 +26,21 @@ export class TransferProperties extends Component
 
 export class LevelTransferProperties extends TransferProperties
 {
-    constructor(gameObject, clear)
+    constructor(gameObject, enemies=[])
     {
         super(gameObject, undefined, undefined);
 
-        this.clear = clear;
+        this.enemies = enemies;
+    }
+
+    get clear()
+    {
+        for (let i = 0; i < this.enemies.length; i++)
+        {
+            if (this.enemies[i][1]) { return false; }
+        }
+
+        return true;
     }
 }
 
