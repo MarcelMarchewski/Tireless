@@ -307,6 +307,9 @@ export class MainMenu extends Scene
     {
         super("Main Menu");
 
+        Engine.I.menuBar.style.display = "";
+        Engine.I.loadButton.style.display = "";
+
         this.backgroundTexture = new Image();
         this.backgroundTexture.src = "source/tireless/resources/textures/MainMenu/tirelessTitleBackground.png";
 

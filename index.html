@@ -10,12 +10,31 @@
 
         <link rel="stylesheet" href="resources/main.css">
         <script src="source/tireless/tireless.js" type="module" defer="body"></script>
-        <!-- <script src="source/tilemapEditor/tilemapEditor.js" type="module" defer="body"></script> --->
     </head>
 
     <body>
         <button id="playButton">
             Play Game
         </button>
+
+        <div id="leftSideBar" style="display: none;">
+            <div id="barBackground">
+                <br>
+                
+                <h1>
+                    MENU
+                </h1>
+
+                <div id="barCentre">
+                    <button class="menuButton" id="saveButton">Save</button>
+
+                    <br>
+
+                    <input accept=".json" type="file" id="loadInput"> 
+
+                    <button class="menuButton" id="loadButton">Load</button>
+                </div>
+            </div>
+        </div>
     </body>
 </html>

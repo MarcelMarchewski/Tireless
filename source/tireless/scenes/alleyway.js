@@ -69,6 +69,8 @@ export class Alleyway extends Scene
             Engine.I.persistentScene.alleywayLevelTransferProperties = new GameObject(Engine.I.persistentScene, "AlleywayLevelTransferProperties").AddComponent(LevelTransferProperties);
         }
 
+        Engine.I.loadButton.style.display = "none";
+
         this.levelTransferProperties = Engine.I.persistentScene.alleywayLevelTransferProperties;
 
         this.playerTexture = new Image();
