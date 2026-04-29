@@ -1812,6 +1812,19 @@ class ColliderManager extends Component
                 if (this._colliders[i] instanceof _targetCol.ignoreTypes[j]) { _ignored = true; break; }
             }
 
+            if (!_ignored)
+            {
+                for (let j = 0; j < this._colliders[i].ignoreTypes.length; j++)
+                {
+                    if (_targetCol instanceof this._colliders[i].ignoreTypes[j])
+                    {
+                        _ignored = true;
+
+                        break;
+                    }
+                }
+            }
+
             if (_ignored) { continue; }
 
             _targetCol.CompareAgainst(this._colliders[i]);
@@ -2059,6 +2072,8 @@ export class InputManager extends Component
     OnCursorPositionUpdate()
     {
         this.inputMode = 0;
+
+        document.body.style.cursor="";
     }
 
     OnMouseDown(_event)
@@ -2101,6 +2116,8 @@ export class InputManager extends Component
     {
         this.inputMode = 1;
 
+        document.body.style.cursor="none";
+
         for (let i = 0; i < this._gpbdListeners.length; i++)
         {
             this._gpbdListeners[i](_button, _name);
@@ -2119,6 +2136,8 @@ export class InputManager extends Component
     {
         this.inputMode = 1;
 
+        document.body.style.cursor="none";
+
         for (let i = 0; i < this._gplsListeners.length; i++)
         {
             this._gplsListeners[i](_valueX, _valueY);
@@ -2128,6 +2147,8 @@ export class InputManager extends Component
     OnGamepadRightStick(_valueX, _valueY)
     {
         this.inputMode = 1;
+
+        document.body.style.cursor="none";
 
         for (let i = 0; i < this._gprsListeners.length; i++)
         {
@@ -2481,26 +2502,18 @@ export class UICanvas extends Component
 
         this._indexChangeTimer = 0;
         this._indexChangeCooldown = 0.25;
+
+        this._gamepadListening = false;
     }
 
     Start()
     {
-        if (!this._bound)
-        {
-            this._currentElement = null;
-            this.Internal_CheckInputMode();
-            this._bound = true;
-        }
+        this.Internal_CheckInputMode();
     }
 
     OnEnable()
     {
-        if (!this._bound)
-        {
-            this._currentElement = null;
-            this.Internal_CheckInputMode();
-            this._bound = true;
-        }
+        this.Internal_CheckInputMode();
     }
 
     OnDisable()
@@ -2560,20 +2573,26 @@ export class UICanvas extends Component
 
     Internal_AddListeners()
     {
+        if (this._gamepadListening) { return; }
+
         Engine.I.persistentScene.inputManager.AddGamepadButtonDownListener(this.OnGamepadButtonDown);
         Engine.I.persistentScene.inputManager.AddGamepadButtonUpListener(this.OnGamepadButtonUp);
 
         Engine.I.persistentScene.inputManager.AddGamepadLeftStickListener(this.OnGamepadLeftStick);
+
+        this._gamepadListening = true;
     }
 
     Internal_RemoveListeners()
     {
+        if (!this._gamepadListening) { return; }
+
         Engine.I.persistentScene.inputManager.RemoveGamepadButtonDownListener(this.OnGamepadButtonDown);
         Engine.I.persistentScene.inputManager.RemoveGamepadButtonUpListener(this.OnGamepadButtonUp);
 
         Engine.I.persistentScene.inputManager.RemoveGamepadLeftStickListener(this.OnGamepadLeftStick);
 
-        this._bound = false;
+        this._gamepadListening = false;
     }
 
     Internal_FindNextInteractable(_startElement, _direction)
@@ -2795,7 +2814,7 @@ export class UICanvas extends Component
 
         if (_currentRemoved)
         {
-            const _nextElement = this.Internal_FindNextInteractable(_elementIndex - 1, 1);
+            const _nextElement = this.Internal_FindNextInteractable(this._elements[_elementIndex - 1], 1);
 
             this._currentElement = _nextElement;
 
@@ -2837,6 +2856,8 @@ export class Timer extends Component
     Play()
     {
         this._running = true;
+
+        this.Base_OnTimerPlay();
     }
 
     Pause()
@@ -2851,6 +2872,11 @@ export class Timer extends Component
         this._currentValue = this._maxValue;
     }
 
+    Base_OnTimerPlay()
+    {
+        this.OnTimerPlay();
+    }
+
     Base_OnTimerUp()
     {
         this.Stop();
@@ -2861,6 +2887,11 @@ export class Timer extends Component
         {
             this.Base_Destroy();
         }
+    }
+
+    OnTimerPlay()
+    {
+
     }
 
     OnTimerUp()

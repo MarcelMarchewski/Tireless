@@ -6,6 +6,7 @@ import
     Animator,
     AnimationClip,
     Component,
+    TextRenderer,
     TextData,
     UICanvas,
     UIElement,
@@ -28,6 +29,17 @@ import
     LevelTransition,
     LevelTransitionFader
 } from "/source/tireless/scenes/levelTransition.js";
+
+import
+{
+    DashParticle
+} from "/source/tireless/logic/particles.js";
+
+import
+{
+    TransferProperties,
+    LevelTransferProperties
+} from "/source/tireless/tireless.js";
 
 export class BlockUI extends GameObject
 {
@@ -53,6 +65,9 @@ export class BlockUI extends GameObject
 
             this.scene.player.controller.dashCursor.blockCursor.animator.SetClip("CannotBlockAnim");
             this.scene.player.controller.blocking = false;
+
+            this.scene.player.controller.blockStartStopSFX.SetFile("source/tireless/resources/audio/Shared/Tireless_BlockEnd.wav");
+            this.scene.player.controller.blockStartStopSFX.Play();
         }
     }
 
@@ -88,6 +103,12 @@ export class DashUI extends GameObject
         this.animator.SetClip("ReadyBarAnim");
 
         this.scene.player.controller.dashCursor.animator.JumpToFrame(0);
+
+        if (this.scene.player.controller.dashParticle == null)
+        {
+            this.scene.player.controller.dashParticle = new DashParticle(this.scene, this.scene.player.transform);
+            this.scene.player.controller.dashParticle.transform.localPosition = Vector2.zero;
+        }
     }
 }
 
@@ -184,6 +205,53 @@ export class EnemyHealthUI extends GameObject
     }
 }
 
+export class BossEnemyHealthUI extends GameObject
+{
+    constructor(scene, name="BossEnemyHealthUI", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.OnDrainAnimationComplete = this.OnDrainAnimationComplete.bind(this);
+
+        this.drainBarAnim = new AnimationClip("DrainBarAnim", 0, 20, 0.1, false, false, this.OnDrainAnimationComplete);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.scene.bossEnemyHealthUITexture, Engine.I.UI_DEFAULT_LAYER, undefined, new Vector2(22, 3)));
+        this.animator = this.AddComponent(Animator, this.renderer, 21, [this.drainBarAnim]);
+    }
+
+    OnDrainAnimationComplete()
+    {
+
+    }
+}
+
+export class PlayerScoreUIUpdater extends Component
+{
+    constructor(gameObject, renderer)
+    {
+        super(gameObject);
+
+        this.renderer = renderer;
+    }
+
+    Update()
+    {
+        this.renderer.textData.text = "SCORE: " + Engine.I.persistentScene.transferProperties.score;
+    }
+}
+
+export class PlayerScoreUI extends GameObject
+{
+    constructor(scene, name="PlayerScoreUI", parent=null)
+    {
+        super(scene, name, parent);
+
+        this.renderer = this.AddComponent(TextRenderer, new TextData("SCORE: 0", "8px VCR_OSD_MONO", "yellow", "left", undefined, Engine.I.UI_TEXT_DEFAULT_LAYER));
+
+        this.comp = this.AddComponent(PlayerScoreUIUpdater, this.renderer);
+    }
+}
+
 class SceneSwapButton extends UIElement
 {
     constructor(gameObject, canvas, animator, target, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
@@ -262,6 +330,86 @@ export class DeathScreenRetryButton extends GameObject
         this.scene.levelTransferProperties.healthBoxUsed = undefined;
 
         let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition(this.scene.name, this.scene.constructor)); });
+
+        this.clicked = true;
+    }
+}
+
+export class WinScreenMenuButton extends GameObject
+{
+    constructor(scene, currentCanvasObject, localPosition, name="MenuButton", text="MAIN MENU", parent=null)
+    {
+        super(scene, name, parent);
+        
+        this.SwapScene = this.SwapScene.bind(this);
+
+        this.clicked = false;
+
+        this.texture = new Image();
+        this.texture.src = "source/tireless/resources/textures/UI/tirelessWinScreenButton.png";
+
+        this.buttonAnimationClip = new AnimationClip("ButtonAnimation", 0, 3, 0, false, false);
+
+        this.transform.localPosition = localPosition;
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, 450, undefined, new Vector2(64, 32)));
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.buttonAnimationClip]);
+        
+        this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, this.SwapScene, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, 455), 64, 32);
+    }
+
+    SwapScene()
+    {
+        if (this.clicked) { return; }
+
+        let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition("Main Menu", MainMenu)); });
+
+        this.clicked = true;
+    }
+}
+
+export class WinScreenRestartButton extends GameObject
+{
+    constructor(scene, currentCanvasObject, localPosition, name="RestartButton", text="RESTART", parent=null)
+    {
+        super(scene, name, parent);
+        
+        this.SwapScene = this.SwapScene.bind(this);
+
+        this.clicked = false;
+
+        this.texture = new Image();
+        this.texture.src = "source/tireless/resources/textures/UI/tirelessWinScreenButton.png";
+
+        this.buttonAnimationClip = new AnimationClip("ButtonAnimation", 0, 3, 0, false, false);
+
+        this.transform.localPosition = localPosition;
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, 450, undefined, new Vector2(64, 32)));
+        this.animator = this.AddComponent(Animator, this.renderer, 4, [this.buttonAnimationClip]);
+        
+        this.sceneSwapper = this.AddComponent(SceneSwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, this.SwapScene, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, 455), 64, 32);
+    }
+
+    SwapScene()
+    {
+        if (this.clicked) { return; }
+
+        Engine.I.persistentScene.transferProperties = new GameObject(Engine.I.persistentScene, "TransferProperties").AddComponent(TransferProperties, new Vector2(72, 128), 100);
+
+        Engine.I.persistentScene.transferProperties.gameComplete = true;
+
+        Engine.I.persistentScene.alleywayLevelTransferProperties = undefined;
+        Engine.I.persistentScene.junctionLevelTransferProperties = undefined;
+
+        Engine.I.persistentScene.parkLevelTransferProperties = undefined;
+
+        Engine.I.persistentScene.townLevelTransferProperties = undefined;
+        Engine.I.persistentScene.shopLevelTransferProperties = undefined;
+
+        Engine.I.persistentScene.courtyardLevelTransferProperties = undefined;
+
+        let _fader = new LevelTransitionFader(this.scene, () => { Engine.I.LoadScene(new LevelTransition("Alleyway", Alleyway)); });
 
         this.clicked = true;
     }

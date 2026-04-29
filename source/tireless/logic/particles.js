@@ -146,6 +146,47 @@ export class HealParticle extends Particle
     }
 }
 
+export class DashParticleUpdater extends Component
+{
+    constructor(gameObject)
+    {
+        super(gameObject);
+    }
+
+    Start()
+    {
+        if (this.gameObject.scene.player.controller.health <= 0)
+        {
+            this.gameObject.Base_Destroy();
+        }
+    }
+
+    Update()
+    {
+        if (this.gameObject.scene.player.controller.health <= 0)
+        {
+            this.gameObject.Base_Destroy();
+        }
+    }
+}
+
+export class DashParticle extends Particle
+{
+    constructor(scene, parent=null)
+    {
+        let _texture = new Image();
+        _texture.src = "source/tireless/resources/textures/Shared/tirelessDashIndicator.png";
+
+        let _sprite = new Sprite(_texture, Engine.I.PARTICLE_DEFAULT_LAYER, undefined, new Vector2(32, 32));
+
+        let _animationClip = new AnimationClip("DashAnim", 0, 3, 0.1, true, true);
+
+        super(scene, _sprite, 3, _animationClip, false, "DashParticle", parent);
+
+        this.updater = this.AddComponent(DashParticleUpdater);
+    }
+}
+
 export class EnemyStunParticle extends Particle
 {
     constructor(scene)

@@ -25,7 +25,8 @@ import
 {
     BlockUI,
     DashUI,
-    HealthUI
+    HealthUI,
+    PlayerScoreUI
 } from "/source/tireless/logic/UI.js";
 
 import
@@ -58,6 +59,11 @@ import
 {
     Shop
 } from "/source/tireless/scenes/shop.js";
+
+import
+{
+    Dojo
+} from "/source/tireless/scenes/dojo.js";
 
 export class Town extends Scene
 {
@@ -118,15 +124,6 @@ export class Town extends Scene
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
 
-        this.blockUI = new BlockUI(this);
-        this.blockUI.transform.position = new Vector2(32, 8);
-
-        this.dashUI = new DashUI(this);
-        this.dashUI.transform.position = new Vector2(64, 8);
-
-        this.healthUI = new HealthUI(this);
-        this.healthUI.transform.position = new Vector2(32, 23);
-
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
         this.rightWallCol = new GameObject(this, "RightWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
 
@@ -153,17 +150,34 @@ export class Town extends Scene
 
         this.junctionExit.transform.rotation = 180;
 
-        this.shopExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(224, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Shop", Shop)); }); this.player.controller.UnbindListeners(); });
-        this.shopExit.transform.position = new Vector2(96, 128);
+        this.shopExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(208, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Shop", Shop)); }); this.player.controller.UnbindListeners(); });
+        this.shopExit.transform.position = new Vector2(80, 128);
 
-        this.shopExit.renderer.enabled = false;
-        this.shopExit.unlockedObject.renderer.enabled = true;
+        this.dojoExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = 100; Engine.I.persistentScene.transferProperties.position = new Vector2(48, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Dojo", Dojo)); }); this.player.controller.UnbindListeners(); });
+        this.dojoExit.transform.position = new Vector2(176, 128);
 
-        this.shopExit.transform.rotation = 90;
+        if (Engine.I.persistentScene.transferProperties.keys[1])
+        {
+            this.dojoExit.renderer.enabled = false;
+            this.dojoExit.unlockedObject.renderer.enabled = true;
+
+            this.dojoExit.transform.rotation = -90;
+        }
+
+        if (this.levelTransferProperties.healthBoxUsed == undefined)
+        {
+            this.levelTransferProperties.healthBoxUsed = [false];
+        }
+
+        if (!this.levelTransferProperties.healthBoxUsed[0])
+        {
+            const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed[0] = true; });
+            _healthBox.transform.position = new Vector2(240, 16);
+        }
 
         if (this.levelTransferProperties.enemies.length == 0)
         {
-            this.levelTransferProperties.enemies = [[new Vector2(96, 240), true], [new Vector2(160, 240), true], [new Vector2(32, 16), true], [new Vector2(224, 16), true]];
+            this.levelTransferProperties.enemies = [[new Vector2(96, 240), true], [new Vector2(160, 240), true]];
         }
 
         if (!this.levelTransferProperties.clear)
@@ -173,16 +187,6 @@ export class Town extends Scene
                 if (this.levelTransferProperties.enemies[i][1]) 
                 {
                     const _enemy = new RangedEnemy(this, i);
-
-                    _enemy.transform.position = this.levelTransferProperties.enemies[i][0];
-                }
-            }
-
-            for (let i = 2; i < 4; i++)
-            {
-                if (this.levelTransferProperties.enemies[i][1]) 
-                {
-                    const _enemy = new Enemy(this, i);
 
                     _enemy.transform.position = this.levelTransferProperties.enemies[i][0];
                 }
@@ -205,6 +209,18 @@ export class Town extends Scene
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
+        this.blockUI = new BlockUI(this);
+        this.blockUI.transform.position = new Vector2(32, 8);
+
+        this.dashUI = new DashUI(this);
+        this.dashUI.transform.position = new Vector2(64, 8);
+
+        this.healthUI = new HealthUI(this);
+        this.healthUI.transform.position = new Vector2(32, 23);
+
+        this.playerScoreUI = new PlayerScoreUI(this);
+        this.playerScoreUI.transform.position = new Vector2(8, 240);
+
         let _fader = new LevelTransitionFader(this, undefined, true);
     }
 
@@ -216,5 +232,13 @@ export class Town extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
+
+        if (this.levelTransferProperties.clear)
+        {
+            this.shopExit.renderer.enabled = false;
+            this.shopExit.unlockedObject.renderer.enabled = true;
+
+            this.shopExit.transform.rotation = 90;
+        }
     }
 }

@@ -12,13 +12,15 @@ import
 
 import
 {
-    Player
+    Player,
+    PlayerWinScreen
 } from "/source/tireless/logic/player.js";
 
 import
 {
     Enemy,
-    RangedEnemy
+    RangedEnemy,
+    BossEnemy
 } from "/source/tireless/logic/enemy.js";
 
 import 
@@ -57,18 +59,18 @@ import
     Town
 } from "/source/tireless/scenes/town.js";
 
-export class Shop extends Scene
+export class Dojo extends Scene
 {
     constructor()
     {
-        super("Shop");
+        super("Dojo");
 
-        if (Engine.I.persistentScene.townLevelTransferProperties == undefined)
+        if (Engine.I.persistentScene.dojoLevelTransferProperties == undefined)
         {
-            Engine.I.persistentScene.townLevelTransferProperties = new GameObject(Engine.I.persistentScene, "ShopLevelTransferProperties").AddComponent(LevelTransferProperties);
+            Engine.I.persistentScene.dojoLevelTransferProperties = new GameObject(Engine.I.persistentScene, "DojoLevelTransferProperties").AddComponent(LevelTransferProperties);
         }
 
-        this.levelTransferProperties = Engine.I.persistentScene.townLevelTransferProperties;
+        this.levelTransferProperties = Engine.I.persistentScene.dojoLevelTransferProperties;
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -78,6 +80,9 @@ export class Shop extends Scene
 
         this.rangedEnemyTexture = new Image();
         this.rangedEnemyTexture.src = "source/tireless/resources/textures/Shared/tirelessEnemyRanged.png";
+
+        this.bossEnemyTexture = new Image();
+        this.bossEnemyTexture.src = "source/tireless/resources/textures/Shared/tirelessEnemyBoss.png";
 
         this.dashCursorTexture = new Image();
         this.dashCursorTexture.src = "source/tireless/resources/textures/Shared/dashCursor.png";
@@ -99,63 +104,75 @@ export class Shop extends Scene
 
         this.enemyHealthUITexture = new Image();
         this.enemyHealthUITexture.src = "source/tireless/resources/textures/UI/tirelessEnemyHealthSlider.png";
+
+        this.bossEnemyHealthUITexture = new Image();
+        this.bossEnemyHealthUITexture.src = "source/tireless/resources/textures/UI/tirelessBossEnemyHealthSlider.png";
     }
 
     Start()
     {
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/shop.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
+        this.backgroundRenderer.gameObject.transform.scale = new Vector2(-1, 1);
 
         this.player = new Player(this);
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
 
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
+        this.rightWallCol = new GameObject(this, "RightWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
 
         this.topWallCol = new GameObject(this, "TopWallCol").AddComponent(WorldCollider, new Vector2(256, 32));
         this.bottomWallCol = new GameObject(this, "BottomWallCol").AddComponent(WorldCollider, new Vector2(256, 32));
 
-        this.rWallTopCol = new GameObject(this, "TLBuildingCol").AddComponent(WorldCollider, new Vector2(32, 128));
-        this.rWallBottomCol = new GameObject(this, "TRBuildingCol").AddComponent(WorldCollider, new Vector2(32, 128));
-
         this.leftWallCol.gameObject.transform.position = new Vector2(0, 128);
+        this.rightWallCol.gameObject.transform.position = new Vector2(256, 128);
 
         this.topWallCol.gameObject.transform.position = new Vector2(128, 256);
         this.bottomWallCol.gameObject.transform.position = new Vector2(128, 0);
 
-        this.rWallTopCol.gameObject.transform.position = new Vector2(256, 192);
-        this.rWallBottomCol.gameObject.transform.position = new Vector2(256, 64);
-
-        this.townExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(112, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Town", Town)); }); this.player.controller.UnbindListeners(); });
-        this.townExit.transform.position = new Vector2(240, 128);
-
-        this.townExit.renderer.enabled = false;
-        this.townExit.unlockedObject.renderer.enabled = true;
-
-        this.townExit.transform.rotation = -90;
-
         if (this.levelTransferProperties.healthBoxUsed == undefined)
         {
-            this.levelTransferProperties.healthBoxUsed = [false];
+            this.levelTransferProperties.healthBoxUsed = [false, false];
         }
 
         if (!this.levelTransferProperties.healthBoxUsed[0])
         {
             const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed[0] = true; });
-            _healthBox.transform.position = new Vector2(128, 128);
+            _healthBox.transform.position = new Vector2(192, 192);
         }
 
-        if (!Engine.I.persistentScene.transferProperties.playerHasGun)
+        if (!this.levelTransferProperties.healthBoxUsed[1])
         {
-            const _gun = new ShopGun(this);
-            _gun.transform.position = new Vector2(64, 160);
+            const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed[1] = true; });
+            _healthBox.transform.position = new Vector2(192, 64);
         }
 
-        if (!Engine.I.persistentScene.transferProperties.keys[0])
+        if (!Engine.I.persistentScene.transferProperties.gameComplete)
         {
-            const _key = new ShopKey(this);
-            _key.transform.position = new Vector2(192, 160);
+            this.levelTransferProperties.enemies = [[new Vector2(192, 128), true]];
         }
+
+        else
+        {
+            this.levelTransferProperties.enemies = [[new Vector2(192, 128), true], [new Vector2(192, 192), true], [new Vector2(64, 192), true]];
+        }
+
+        let _tmp = 0;
+
+        for (let i = 0; i < this.levelTransferProperties.enemies.length; i++)
+        {
+            if (this.levelTransferProperties.enemies[i][1]) 
+            {
+                const _enemy = new BossEnemy(this, i);
+
+                _enemy.transform.position = this.levelTransferProperties.enemies[i][0];
+
+                _tmp += 1
+            }
+        }
+
+        this.enemyCounter = _tmp;
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
@@ -182,5 +199,12 @@ export class Shop extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
+
+        if (_value == 0)
+        {
+            let _winScreen = new PlayerWinScreen(this);
+
+            this.player.controller.UnbindListeners();
+        }
     }
 }

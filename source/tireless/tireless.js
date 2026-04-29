@@ -13,7 +13,7 @@ import
 
 export class TransferProperties extends Component
 {
-    constructor(gameObject, position, health, keys=[false])
+    constructor(gameObject, position, health, keys=[false, false])
     {
         super(gameObject);
 
@@ -21,6 +21,12 @@ export class TransferProperties extends Component
         this.health = health;
 
         this.keys = keys;
+
+        this.score = 0;
+
+        this.playerHasGun = false;
+
+        this.gameComplete = false;
     }
 }
 

@@ -23,7 +23,10 @@ import
 {
     EnemyCollider,
     EnemyController,
-    RangedEnemyBulletCollider
+    RangedEnemyBullet,
+    RangedEnemyBulletCollider,
+    BossEnemyController,
+    BossEnemyCollider
 } from "/source/tireless/logic/enemy.js";
 
 import 
@@ -34,12 +37,15 @@ import
     BlockParticle,
     BloodParticle,
     DeathParticle,
-    HealParticle
+    HealParticle,
+    RangedEnemyMuzzleFlashParticle,
+    DashParticle
 } from "/source/tireless/logic/particles.js";
 
 import
 {
-    WorldCollider
+    WorldCollider,
+    WaterCollider
 } from "/source/tireless/tireless.js";
 
 import
@@ -50,7 +56,9 @@ import
 import
 {
     DeathScreenRetryButton,
-    DeathScreenMenuButton
+    DeathScreenMenuButton,
+    WinScreenRestartButton,
+    WinScreenMenuButton
 } from "/source/tireless/logic/UI.js";
 
 export class PlayerDeathScreen extends GameObject
@@ -92,11 +100,155 @@ export class PlayerDeathScreen extends GameObject
     }
 }
 
+export class PlayerWinScreen extends GameObject
+{
+    constructor(scene, name="PlayerWinScreen", parent=null)
+    {
+        super(scene, name, parent);
+        
+        this.OnAnimationComplete = this.OnAnimationComplete.bind(this);
+
+        this.canvas = new GameObject(this.scene, "Canvas", this.transform).AddComponent(UICanvas);
+
+        this.texture = new Image();
+        this.texture.src = "source/tireless/resources/textures/Shared/tirelessWinScreen.png";
+
+        this.winScreenAnim = new AnimationClip("WinScreenAnim", 0, 7, 0.1, false, true, this.OnAnimationComplete);
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(this.texture, 400, undefined, new Vector2(64, 64)));
+
+        this.animator = this.AddComponent(Animator, this.renderer, 8, [this.winScreenAnim]);
+
+        this.restartButton = new WinScreenRestartButton(this.scene, this.canvas.gameObject, new Vector2(64, 32), undefined, undefined, this.canvas.gameObject.transform);
+        this.restartButton.enabled = false;
+
+        this.menuButton = new WinScreenMenuButton(this.scene, this.canvas.gameObject, new Vector2(192, 32), undefined, undefined, this.canvas.gameObject.transform);
+        this.menuButton.enabled = false;
+
+        this.transform.position = new Vector2(128, 128);
+        this.transform.scale = new Vector2(4, 4);
+
+        this.canvas.gameObject.transform.position = Vector2.zero;
+        this.canvas.gameObject.transform.scale = Vector2.one;
+    }
+
+    OnAnimationComplete()
+    {
+        this.restartButton.enabled = true;
+        this.menuButton.enabled = true;
+    }
+}
+
+export class PlayerBulletCollider extends AABB
+{
+    constructor(gameObject, dimensions, direction)
+    {
+        super(gameObject, dimensions);
+
+        this.ignoreTypes = [PlayerCollider, WaterCollider, InteractableCollider];
+
+        this.speed = 250;
+        this.direction = direction;
+    }
+
+    Update()
+    {
+        const _move = Vector2.Multiply(this.direction.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed));
+
+        this.gameObject.transform.localPosition.Add(_move);
+
+        this.gameObject.scene.colliderManager.Compare(this);
+    }
+
+    OnCollisionDetected(_other)
+    {
+        if (_other instanceof BossEnemyCollider)
+        {
+            if (this.gameObject.parry == false)
+            {
+                if (!_other.gameObject.controller.stunned)
+                {
+                    this.ignoreTypes.push(RangedEnemyBulletCollider);
+
+                    const _newDirection = Vector2.Multiply(this.direction, Vector2.negativeOne);
+
+                    const _degrees = Math.atan2(_newDirection.y, _newDirection.x) * 180 / Math.PI;
+
+                    let _bullet = new RangedEnemyBullet(this.gameObject.scene, _newDirection, true);
+                    _bullet.transform.position = this.gameObject.transform.position;
+                    _bullet.transform.rotation = _degrees - 90
+
+                    this.gameObject.scene.player.controller.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordParry.wav");
+                    this.gameObject.scene.player.controller.blockParrySFX.Play()
+
+                    let _particle = new SwordParryParticle(this.gameObject.scene);
+                    _particle.transform.position = this.gameObject.transform.position;
+                }
+
+                else
+                {
+                    _other.gameObject.controller.Damage(5);
+
+                    let _bloodParticle = new BloodParticle(this.gameObject.scene);
+                    _bloodParticle.transform.position = this.gameObject.transform.position;
+                }
+            }
+
+            else
+            {
+                _other.gameObject.controller.Damage(5);
+
+                let _bloodParticle = new BloodParticle(this.gameObject.scene);
+                _bloodParticle.transform.position = this.gameObject.transform.position;
+            }
+        }
+
+        else if (_other instanceof EnemyCollider)
+        {
+            _other.gameObject.controller.Damage(25);
+
+            let _bloodParticle = new BloodParticle(this.gameObject.scene);
+            _bloodParticle.transform.position = this.gameObject.transform.position;
+        }
+
+        else
+        {
+            this.gameObject.impactSFX.Stop();
+            this.gameObject.impactSFX.Play();
+        }
+
+        this.gameObject.Base_Destroy();
+    }
+}
+
+export class PlayerBullet extends GameObject
+{
+    constructor(scene, direction, parry=false, name="PlayerBullet", parent=null)
+    {
+        super(scene, name, parent);
+        
+        let _texture = new Image();
+        _texture.src = "source/tireless/resources/textures/Shared/tirelessBullet.png";
+
+        this.renderer = this.AddComponent(SpriteRenderer, new Sprite(_texture, undefined, undefined, new Vector2(16, 16)));
+
+        this.impactSFX = new GameObject(this.scene, "BulletImpactSFX").AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_BulletImpactObstacle.wav", Engine.I.sfxMixer);
+        
+        this.parry = parry;
+
+        this.col = this.AddComponent(PlayerBulletCollider, new Vector2(16, 16), direction);
+
+        this.transform.scale = new Vector2(0.25, 0.25);
+    }
+}
+
 export class PlayerCollider extends AABB
 {
     constructor(gameObject, dimensions=new Vector2(26, 26))
     {
         super(gameObject, dimensions);
+
+        this.ignoreTypes = [PlayerBulletCollider];
 
         this.epsilon = 1;
     }
@@ -168,6 +320,25 @@ export class PlayerAttackTimer extends Timer
     }
 }
 
+export class PlayerShootTimer extends Timer
+{
+    constructor(gameObject, startValue=2, autoPlay=false, destructive=false)
+    {
+        super(gameObject, startValue, autoPlay, destructive);
+    }
+
+    OnTimerUp()
+    {
+        if (this.player == undefined)
+        {
+            this.player = this.gameObject.GetComponent(PlayerController);
+        }
+
+        this.player.shotReadySFX.Play();
+        this.player.canShoot = true;
+    }
+}
+
 export class PlayerController extends LivingEntity
 {
     constructor(gameObject)
@@ -202,10 +373,19 @@ export class PlayerController extends LivingEntity
 
         this.directionDegrees = 0;
 
+        this.dashParticle = null;
+
         this.blockParrySFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_SwordParry.wav", Engine.I.sfxMixer, 3);
         this.damageSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_PlayerDamaged.wav", Engine.I.sfxMixer);
+
+        this.blockStartStopSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_BlockStart.wav", Engine.I.sfxMixer, 1.5);
+
         this.healSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Heal.wav", Engine.I.sfxMixer);
         this.attackSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_SwordSwing.wav", Engine.I.sfxMixer);
+
+        this.shotReadySFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_ShotReady.wav", Engine.I.sfxMixer);
+        this.shotSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Gunshot.wav", Engine.I.sfxMixer);
+
         this.dashSFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_Dash.wav", Engine.I.sfxMixer);
 
         this.dashCursor = new DashCursor(this.gameObject.scene, undefined, this.gameObject.transform);
@@ -219,6 +399,9 @@ export class PlayerController extends LivingEntity
 
         this.parryTimer = this.gameObject.AddComponent(PlayerParryTimer);
         this.attackTimer = this.gameObject.AddComponent(PlayerAttackTimer);
+        this.shotTimer = this.gameObject.AddComponent(PlayerShootTimer);
+
+        this.muzzleFlashPosition = this.gameObject.transform.position;
 
         this.blocking = false;
 
@@ -226,6 +409,8 @@ export class PlayerController extends LivingEntity
 
         this.canAttack = true;
         this.attacking = false;
+
+        this.canShoot = true;
     }
 
     Start()
@@ -265,6 +450,13 @@ export class PlayerController extends LivingEntity
 
     Update()
     {
+        if (!this.dashHeld && this.dashParticle != null)
+        {
+            this.dashParticle.Base_Destroy();
+
+            this.dashParticle = null;
+        }
+
         if (this.blocking)
         {
             let _direction;
@@ -333,15 +525,35 @@ export class PlayerController extends LivingEntity
                         }
                     }
 
-                    else
+                    else 
                     {
-                        this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordClash.wav");
-                        this.blockParrySFX.Play();
+                        if (this.canParry)
+                        {
+                            const _degrees = Math.atan2(_direction.y, _direction.x) * 180 / Math.PI;
 
-                        let _particle = new BlockParticle(this.gameObject.scene);
-                        _particle.transform.position = _hit[0];
+                            let _bullet = new PlayerBullet(this.gameObject.scene, _direction, true);
+                            _bullet.transform.position = _hit[0];
+                            _bullet.transform.rotation = _degrees - 90;
 
-                        _hit[1].gameObject.Base_Destroy();
+                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordParry.wav");
+                            this.blockParrySFX.Play();
+
+                            let _particle = new SwordParryParticle(this.gameObject.scene);
+                            _particle.transform.position = _hit[0];
+
+                            _hit[1].gameObject.Base_Destroy();
+                        }
+
+                        else
+                        {
+                            this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordClash.wav");
+                            this.blockParrySFX.Play();
+
+                            let _particle = new BlockParticle(this.gameObject.scene);
+                            _particle.transform.position = _hit[0];
+
+                            _hit[1].gameObject.Base_Destroy();
+                        }
                     }
                 }
             }
@@ -452,6 +664,8 @@ export class PlayerController extends LivingEntity
 
         let _deathScreen = new PlayerDeathScreen(this.gameObject.scene);
 
+        this.gameObject.deathSFX.Play();
+
         this.UnbindListeners();
 
         this.gameObject.Base_Destroy();
@@ -470,6 +684,12 @@ export class PlayerController extends LivingEntity
 
             this.gameObject.scene.dashUI.animator.SetClip("SelectBarAnim");
             this.gameObject.scene.dashUI.animator.Play();
+
+            if (this.dashParticle == null)
+            {
+                this.dashParticle = new DashParticle(this.gameObject.scene, this.gameObject.transform);
+                this.dashParticle.transform.localPosition = Vector2.zero;
+            }
         }
 
         else if(!this.dashing)
@@ -492,6 +712,12 @@ export class PlayerController extends LivingEntity
 
             this.dashSFX.Stop();
             this.dashSFX.Play();
+
+            if (this.dashParticle != null)
+            {
+                this.dashParticle.Base_Destroy();
+                this.dashParticle = null;
+            }
         }
 
         else
@@ -528,12 +754,21 @@ export class PlayerController extends LivingEntity
 
             this.blocking = true;
 
+            this.blockStartStopSFX.SetFile("source/tireless/resources/audio/Shared/Tireless_BlockStart.wav");
+            this.blockStartStopSFX.Play();
+
             if (!this.parryTimer._running)
             {
                 this.parryTimer.Play();
 
                 this.canParry = true;
             }
+        }
+
+        else if (!this.blocking)
+        {
+            this.blockStartStopSFX.SetFile("source/tireless/resources/audio/Shared/Tireless_BlockEnd.wav");
+            this.blockStartStopSFX.Play();
         }
 
         this.blockCursor.renderer.enabled = true;
@@ -546,6 +781,9 @@ export class PlayerController extends LivingEntity
             this.gameObject.scene.blockUI.animator.Reverse();
 
             this.gameObject.scene.blockUI.animator.currentClip.frameDuration = this.blockRefillSpeed;
+
+            this.blockStartStopSFX.SetFile("source/tireless/resources/audio/Shared/Tireless_BlockStop.wav");
+            this.blockStartStopSFX.Play();
 
             if (this.parryTimer._running)
             {
@@ -594,7 +832,29 @@ export class PlayerController extends LivingEntity
             
             if (_hit[1] != undefined)
             {
-                if (_hit[1] instanceof EnemyCollider)
+                if (_hit[1] instanceof BossEnemyCollider)
+                {
+                    const _enemy = _hit[1].gameObject.GetComponent(BossEnemyController);
+
+                    if (!_enemy.stunned)
+                    {
+                        this.blockParrySFX.SetFile("source/tireless/resources/audio/Shared/Tireless_SwordParry.wav");
+                        this.blockParrySFX.Play();
+
+                        let _particle = new SwordParryParticle(this.gameObject.scene);
+                        _particle.transform.position = _hit[0];
+                    }
+
+                    else
+                    {
+                        _enemy.Damage(5);
+
+                        let _bloodParticle = new BloodParticle(this.gameObject.scene);
+                        _bloodParticle.transform.position = _hit[0];
+                    }
+                }
+
+                else if (_hit[1] instanceof EnemyCollider)
                 { 
                     const _enemy = _hit[1].gameObject.GetComponent(EnemyController);
 
@@ -619,6 +879,54 @@ export class PlayerController extends LivingEntity
     OnAttackStop()
     {
         this.attacking = false;
+    }
+
+    OnShotStart()
+    {
+        if (!Engine.I.persistentScene.transferProperties.playerHasGun) { return; }
+
+        if (this.canShoot)
+        {
+            this.shotSFX.Stop();
+            this.shotSFX.Play();
+
+            let _direction;
+
+            if (Engine.I.persistentScene.inputManager.inputMode == 0)
+            {
+                const _mousePos = Engine.I.persistentScene.cursorManager.cursorPosition;
+
+                _direction = Vector2.Subtract(_mousePos, this.gameObject.transform.position);
+            }
+
+            else
+            {
+                const _joystickPos = Vector2.Add(this.gameObject.transform.position, this.rightJoystickInput);
+
+                if (this.rightJoystickInput.magnitude < 0.1)
+                {
+                    _direction = Vector2.zero;
+                }
+
+                else
+                {
+                    _direction = this.rightJoystickInput;
+                }
+            }
+
+            let _particle = new RangedEnemyMuzzleFlashParticle(this.gameObject.scene);
+            _particle.transform.position = this.muzzleFlashPosition;
+
+            const _degrees = Math.atan2(_direction.y, _direction.x) * 180 / Math.PI;
+
+            let _bullet = new PlayerBullet(this.gameObject.scene, _direction);
+            _bullet.transform.position = this.muzzleFlashPosition;
+            _bullet.transform.rotation = _degrees - 90;
+
+            this.canShoot = false;
+
+            this.shotTimer.Play();
+        }
     }
 
     OnMouseDown(_event)
@@ -701,6 +1009,13 @@ export class PlayerController extends LivingEntity
 
                 break;
             }
+
+            case ("ShiftLeft"):
+            {
+                this.OnShotStart();
+
+                break;
+            }
         }
     }
 
@@ -749,9 +1064,23 @@ export class PlayerController extends LivingEntity
     {
         switch (_name)
         {
-            case ("L2"):
+            case ("L1"):
             {
                 this.OnDashStart();
+
+                break;
+            }
+
+            case ("L2"):
+            {
+                this.OnBlockStart();
+
+                break;
+            }
+
+            case ("R1"):
+            {
+                this.OnShotStart();
 
                 break;
             }
@@ -762,13 +1091,6 @@ export class PlayerController extends LivingEntity
 
                 break;
             }
-
-            case ("RStick"):
-            {
-                this.OnBlockStart();
-
-                break;
-            }
         }
     }
 
@@ -776,9 +1098,16 @@ export class PlayerController extends LivingEntity
     {
         switch (_name)
         {
-            case ("L2"):
+            case ("L1"):
             {
                 this.OnDashStop();
+
+                break;
+            }
+
+            case ("L2"):
+            {
+                this.OnBlockStop();
 
                 break;
             }
@@ -786,13 +1115,6 @@ export class PlayerController extends LivingEntity
             case ("R2"):
             {
                 this.OnAttackStop();
-
-                break;
-            }
-
-            case ("RStick"):
-            {
-                this.OnBlockStop();
 
                 break;
             }
@@ -831,21 +1153,21 @@ export class PlayerController extends LivingEntity
 
         let _frame = 0;
         
-        if (_degrees >= -22.5 && _degrees < 22.5) { _frame = 2; }
+        if (_degrees >= -22.5 && _degrees < 22.5) { _frame = 2; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(14, 0)); }
 
-        else if (_degrees >= 22.5 && _degrees < 67.5) { _frame = 1; }
+        else if (_degrees >= 22.5 && _degrees < 67.5) { _frame = 1; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(8, 8)); }
 
-        else if (_degrees >= 67.5 && _degrees < 112.5) { _frame = 0; }
+        else if (_degrees >= 67.5 && _degrees < 112.5) { _frame = 0; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(0, 8)); }
 
-        else if (_degrees >= 112.5 && _degrees < 157.5) { _frame = 7; }
+        else if (_degrees >= 112.5 && _degrees < 157.5) { _frame = 7; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(-8, 8)); }
 
-        else if (_degrees >= 157.5 || _degrees < -157.5) { _frame = 6; }
+        else if (_degrees >= 157.5 || _degrees < -157.5) { _frame = 6; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(-14, 0)); }
 
-        else if (_degrees >= -157.5 && _degrees < -112.5) { _frame = 5; }
+        else if (_degrees >= -157.5 && _degrees < -112.5) { _frame = 5; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(-8, -3)); }
 
-        else if (_degrees >= -112.5 && _degrees < -67.5) { _frame = 4; }
+        else if (_degrees >= -112.5 && _degrees < -67.5) { _frame = 4; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(-3, -1)); }
 
-        else if (_degrees >= -67.5 && _degrees < -22.5) { _frame = 3; }
+        else if (_degrees >= -67.5 && _degrees < -22.5) { _frame = 3; this.muzzleFlashPosition = Vector2.Add(this.gameObject.transform.position, new Vector2(8, -2)); }
 
         this.directionDegrees = _degrees;
 
@@ -870,6 +1192,8 @@ export class Player extends GameObject
         this.animator = this.AddComponent(Animator, this.renderer, 8, [this.fixedAnimationClip]);
 
         this.col = this.AddComponent(PlayerCollider);
+
+        this.deathSFX = new GameObject(this.scene, "DeathSFX").AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_DeathSound.wav", Engine.I.sfxMixer);
 
         this.controller = this.AddComponent(PlayerController);
     }

@@ -25,7 +25,8 @@ import
 {
     BlockUI,
     DashUI,
-    HealthUI
+    HealthUI,
+    PlayerScoreUI
 } from "/source/tireless/logic/UI.js";
 
 import
@@ -136,15 +137,6 @@ export class Park extends Scene
             _healthBox.transform.position = new Vector2(208, 48);
         }
 
-        this.blockUI = new BlockUI(this);
-        this.blockUI.transform.position = new Vector2(32, 8);
-
-        this.dashUI = new DashUI(this);
-        this.dashUI.transform.position = new Vector2(64, 8);
-
-        this.healthUI = new HealthUI(this);
-        this.healthUI.transform.position = new Vector2(32, 23);
-
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
         this.rightWallCol = new GameObject(this, "RightWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
 
@@ -206,6 +198,18 @@ export class Park extends Scene
         }
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
+
+        this.blockUI = new BlockUI(this);
+        this.blockUI.transform.position = new Vector2(32, 8);
+
+        this.dashUI = new DashUI(this);
+        this.dashUI.transform.position = new Vector2(64, 8);
+
+        this.healthUI = new HealthUI(this);
+        this.healthUI.transform.position = new Vector2(32, 23);
+
+        this.playerScoreUI = new PlayerScoreUI(this);
+        this.playerScoreUI.transform.position = new Vector2(8, 240);
 
         let _fader = new LevelTransitionFader(this, undefined, true);
     }
