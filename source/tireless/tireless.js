@@ -91,6 +91,7 @@ _playButton.onclick = () =>
     Engine.I.LoadScene(_startScene);
 
     Engine.I.menuBar = document.getElementById("leftSideBar");
+    Engine.I.controlsBar = document.getElementById("rightSideBar");
 
     Engine.I.saveButton = document.getElementById("saveButton");
     Engine.I.loadButton = document.getElementById("loadButton");
