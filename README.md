@@ -7,7 +7,7 @@ Playable entirely in a single page application format.
 ## Features
 
   - Keyboard, mouse and controller input support
-  - Music and Sound Effects
+  - Music and Sound Effects (Most SFX belong to zapsplat.com, Music is original)
   - User settings stored in browser cache
   - Entity component system similar to unity
   - Transform system similar to unity
