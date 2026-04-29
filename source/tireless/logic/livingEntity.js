@@ -11,6 +11,8 @@ import
     Engine
 } from "/source/engine/rebound.js";
 
+// Base class for entities that can be killed
+
 export class LivingEntity extends Component
 {
     constructor(gameObject, health=100)
@@ -51,6 +53,8 @@ export class LivingEntity extends Component
     {
 
     }
+
+    // Health is clamped between 0-maxHealth
 
     Base_OnHealthChanged(_amount)
     {

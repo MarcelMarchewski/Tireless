@@ -49,6 +49,8 @@ import
     BossEnemyHealthUI
 } from "/source/tireless/logic/UI.js";
 
+// Collider that handles dash attack logic for the standard enemy type
+
 export class EnemyCollider extends AABB
 {
     constructor(gameObject, dimensions)
@@ -66,15 +68,21 @@ export class EnemyCollider extends AABB
 
     OnCollisionDetected(_other)
     {
+        // Get difference between collider positions
+
         const _delta = new Vector2(
             _other.gameObject.transform.position.x - this.gameObject.transform.position.x,
             _other.gameObject.transform.position.y - this.gameObject.transform.position.y
         )
 
+        // Calculate collision penetration depth
+
         const _penDepth = new Vector2(
             (this.dimensions.x / 2 + _other.dimensions.x / 2) - Math.abs(_delta.x), 
             (this.dimensions.y / 2 + _other.dimensions.y / 2) - Math.abs(_delta.y)
         );
+
+        // Target axis with smallest penetration depth, then push this GameObject out of the collider along that axis
 
         if (_penDepth.x < _penDepth.y)
         {
@@ -103,6 +111,8 @@ export class EnemyCollider extends AABB
         }
     }
 }
+
+// Simple timer that triggers the enemy dash attack upon completion
 
 export class EnemyDashTimer extends Timer
 {
@@ -136,6 +146,8 @@ export class EnemyDashTimer extends Timer
     }
 }
 
+// Simple timer that disables the enemy stun effect upon completion
+
 export class EnemyStunTimer extends Timer
 {
     constructor(gameObject, startValue=3.5, autoPlay=false, destructive=false)
@@ -155,6 +167,8 @@ export class EnemyStunTimer extends Timer
         this.enemy.dashTimer.Stop();
     }
 }
+
+// Complex handler for the enemy's behaviour. Dashes towards the enemy, can be parried or blocked
 
 export class EnemyController extends LivingEntity
 {
@@ -194,6 +208,7 @@ export class EnemyController extends LivingEntity
 
     Update()
     {
+        // The enemy cannot do anything until the stun timer has run out
         if (this.stunned) 
         {
             if (this.stunParticle == null || this.stunParticle._destroyed)
@@ -206,6 +221,8 @@ export class EnemyController extends LivingEntity
 
             return; 
         }
+
+        // If the enemy hasn't locked onto a target: move towards the player and lock onto them once in range
 
         if (this.dashTarget == null)
         {
@@ -242,6 +259,8 @@ export class EnemyController extends LivingEntity
 
         else
         {
+            // Dash towards the target until the distance reaches 5 units
+
             if (this.dashing)
             {
                 if (this.dashTimer.particle != null) { this.dashTimer.particle.Base_Destroy(); this.dashTimer.particle = null; }
@@ -282,6 +301,8 @@ export class EnemyController extends LivingEntity
             const _degrees = Math.atan2(_y, _x) * 180 / Math.PI;
 
             let _frame = 0;
+
+            // Assign animation frame corresponding to the player's angle
         
             if (_degrees >= -22.5 && _degrees < 22.5) { _frame = 2; }
 
@@ -317,6 +338,8 @@ export class EnemyController extends LivingEntity
             const _degrees = Math.atan2(_y, _x) * 180 / Math.PI;
 
             let _frame = 0;
+
+            // Assign animation frame corresponding to the dash target's angle
         
             if (_degrees >= -22.5 && _degrees < 22.5) { _frame = 2; }
 
@@ -350,6 +373,8 @@ export class EnemyController extends LivingEntity
 
     OnEntityKilled(_scoreValue=50)
     {
+        // Spawn a particle effect upon dying, update the save state, increment the score counter and destroy this enemy instance
+
         let _particle = new DeathParticle(this.gameObject.scene);
         _particle.transform.position = this.gameObject.transform.position;
 
@@ -363,6 +388,8 @@ export class EnemyController extends LivingEntity
         this.gameObject.Base_Destroy();
     }
 }
+
+// GameObject container for the enemy controller carrying utilities such as the animator and collider
 
 export class Enemy extends GameObject
 {
@@ -385,6 +412,8 @@ export class Enemy extends GameObject
     }
 }
 
+// Collider that handles collision between an enemy's bullet and any obstacle it encounters. Also moves the bullet in the direction it was fired in
+
 export class RangedEnemyBulletCollider extends AABB
 {
     constructor(gameObject, dimensions, direction)
@@ -397,6 +426,8 @@ export class RangedEnemyBulletCollider extends AABB
         this.direction = direction;
     }
 
+    // Move the bullet towards the target specified by the direction
+
     Update()
     {
         const _move = Vector2.Multiply(this.direction.normalised, new Vector2(Engine.I.deltaTime * this.speed, Engine.I.deltaTime * this.speed));
@@ -405,6 +436,8 @@ export class RangedEnemyBulletCollider extends AABB
 
         this.gameObject.scene.colliderManager.Compare(this);
     }
+
+    // If a valid target is hit, inflict damage and spawn a blood particle. Otherwise, play an impact sound. Both cases lead to bullet destruction
 
     OnCollisionDetected(_other)
     {
@@ -445,6 +478,8 @@ export class RangedEnemyBullet extends GameObject
     }
 }
 
+// Collider that simply prevents the ranged enemy from walking through obstacles
+
 export class RangedEnemyCollider extends EnemyCollider
 {
     constructor(gameObject, dimensions)
@@ -478,6 +513,8 @@ export class RangedEnemyCollider extends EnemyCollider
     }
 }
 
+// Simple timer that dictates when the ranged enemy is ready to shoot. Plays a sound effect to alert the player before a shot is fired
+
 export class RangedEnemyShootTimer extends Timer
 {
     constructor(gameObject, startValue=2, autoPlay=false, destructive=false)
@@ -506,6 +543,8 @@ export class RangedEnemyShootTimer extends Timer
         this.enemy.Shoot();
     }
 }
+
+// Complex class inheriting the standard EnemyController that maintains a distance from the player and shoots at them. Bullets can be parried 
 
 export class RangedEnemyController extends EnemyController
 {
@@ -536,6 +575,8 @@ export class RangedEnemyController extends EnemyController
         this.shotReadySFX = this.gameObject.AddComponent(AudioPlayer, "source/tireless/resources/audio/Shared/Tireless_ShotReady.wav", Engine.I.sfxMixer);
     }
 
+    // If a valid target is detected by the raycast, a bullet will be spawned and sent in its direction
+
     Shoot()
     {
         const _direction = Vector2.Subtract(this.player.transform.position, this.gameObject.transform.position);
@@ -562,6 +603,8 @@ export class RangedEnemyController extends EnemyController
     {
         let _distanceToPlayer = Vector2.Distance(this.gameObject.transform.position, this.player.transform.position);
 
+        // If the player is too close, the enemy will back away from them slowly
+
         if (_distanceToPlayer <= this.evadeRange)
         {
             const _direction = Vector2.Subtract(this.player.transform.position, this.gameObject.transform.position);
@@ -570,6 +613,8 @@ export class RangedEnemyController extends EnemyController
 
             this.gameObject.transform.localPosition.Subtract(_move);
         }
+
+        // If the player is outside of the attack range, the enemy will slowly move towards them
         
         else if (_distanceToPlayer > this.attackRange)
         {
@@ -581,6 +626,8 @@ export class RangedEnemyController extends EnemyController
 
             this.shootTimer.Stop();
         }
+
+        // Otherwise, the enemy is ready to shoot and will try to fire at the player
 
         else
         {
@@ -628,11 +675,15 @@ export class RangedEnemyController extends EnemyController
         this.animator.JumpToFrame(_frame);
     }
 
+    // Ranged enemies have a higher score value due to their increased difficulty
+
     OnEntityKilled(_scoreValue=150)
     {
         super.OnEntityKilled(_scoreValue);
     }
 }
+
+// GameObject container for the RangedEnemyController that stores its id, collider, animator and other such utilities
 
 export class RangedEnemy extends GameObject
 {
@@ -654,6 +705,8 @@ export class RangedEnemy extends GameObject
         this.controller = this.AddComponent(RangedEnemyController);
     }
 }
+
+// Identical to the EnemyCollider, except it is not vulnerable to enemy bullets and deals more damage from dash attacks
 
 export class BossEnemyCollider extends EnemyCollider
 {
@@ -704,6 +757,8 @@ export class BossEnemyCollider extends EnemyCollider
     }
 }
 
+// Simple timer that makes the BossEnemyController dash at the player in rapid succession
+
 export class BossEnemyDashTimer extends Timer
 {
     constructor(gameObject, startValue=0.65, autoPlay=false, destructive=false)
@@ -736,6 +791,8 @@ export class BossEnemyDashTimer extends Timer
     }
 }
 
+// Simple timer that stuns the BossEnemyController
+
 export class BossEnemyStunTimer extends Timer
 {
     constructor(gameObject, startValue=3, autoPlay=false, destructive=false)
@@ -755,6 +812,8 @@ export class BossEnemyStunTimer extends Timer
         this.enemy.dashTimer.Stop();
     }
 }
+
+// Simple timer that triggers the BossEnemyController's ranged phase attack
 
 export class BossEnemyShootTimer extends Timer
 {
@@ -785,6 +844,8 @@ export class BossEnemyShootTimer extends Timer
     }
 }
 
+// Simple timer that makes the BossEnemyController change to a new phase over time
+
 export class BossEnemySwitchModeTimer extends Timer 
 {
     constructor(gameObject, startValue=10, autoPlay=false, destructive=false)
@@ -802,6 +863,8 @@ export class BossEnemySwitchModeTimer extends Timer
         this.enemy.rangedMode = !this.enemy.rangedMode;
     }
 }
+
+// Advanced enemy type that can switch between melee and ranged modes
 
 export class BossEnemyController extends EnemyController
 {
@@ -860,6 +923,8 @@ export class BossEnemyController extends EnemyController
 
         else
         {
+            // Ensure dash particles despawn when switching to ranged mode
+
             if (this.dashTimer.particle != null)
             {
                 this.dashTimer.particle.Base_Destroy();
@@ -1034,6 +1099,8 @@ export class BossEnemyController extends EnemyController
         super.OnEntityKilled(_scoreValue);
     }
 }
+
+// GameObject container for the BossEnemy
 
 export class BossEnemy extends GameObject
 {

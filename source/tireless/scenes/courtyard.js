@@ -60,11 +60,15 @@ import
     Junction
 } from "/source/tireless/scenes/junction.js";
 
+// Very challenging scene that teaches the player how to manage several fast enemies at once and provides the key to the final boss
+
 export class Courtyard extends Scene
 {
     constructor()
     {
         super("Courtyard");
+
+        // Ensure that the persistent scene has a LevelTransferProperties component that refers to this scene to allow for level clearing and progression
 
         if (Engine.I.persistentScene.courtyardLevelTransferProperties == undefined)
         {
@@ -72,6 +76,8 @@ export class Courtyard extends Scene
         }
 
         this.levelTransferProperties = Engine.I.persistentScene.courtyardLevelTransferProperties;
+
+        // Declare commonly shared textures
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -109,15 +115,21 @@ export class Courtyard extends Scene
 
     Start()
     {
+        // Scene decor
+
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/courtyard.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.foregroundRenderer = new GameObject(this, "Foreground Renderer").AddComponent(TilemapRenderer, new Sprite(this.foregroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/courtyardProps.json");
         this.foregroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
+        // Player initialisation
+
         this.player = new Player(this);
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
+
+        // Collision setup
 
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
         this.rightWallCol = new GameObject(this, "RightWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
@@ -137,16 +149,22 @@ export class Courtyard extends Scene
         this.tlBuildingCol.gameObject.transform.position = new Vector2(0, 256);
         this.blBuildingCol.gameObject.transform.position = new Vector2(0, 0);
 
+        // Exit setups
+
         this.junctionExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(208, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Junction", Junction)); }); this.player.controller.UnbindListeners(); });
         this.junctionExit.transform.position = new Vector2(16, 128);
 
         this.junctionExit.unlockedObject.transform.rotation = 90;
+
+        // Key setup
 
         if (Engine.I.persistentScene.transferProperties.keys[1] == false)
         {
             const _key = new Key(this, 1);
             _key.transform.position = new Vector2(196, 128);
         }
+
+        // Define enemies
 
         if (this.levelTransferProperties.enemies.length == 0)
         {
@@ -182,6 +200,8 @@ export class Courtyard extends Scene
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
+        // Initialise UI
+
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);
 
@@ -205,6 +225,8 @@ export class Courtyard extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
+
+        // Allow the player to return again once the level is clear
 
         if (this.levelTransferProperties.clear)
         {

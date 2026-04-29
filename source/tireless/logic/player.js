@@ -61,6 +61,8 @@ import
     WinScreenMenuButton
 } from "/source/tireless/logic/UI.js";
 
+// Renders the death animation and subsequent UICanvas
+
 export class PlayerDeathScreen extends GameObject
 {
     constructor(scene, name="PlayerDeathScreen", parent=null)
@@ -100,6 +102,8 @@ export class PlayerDeathScreen extends GameObject
     }
 }
 
+// Renders the player win animation and subsequent UICanvas
+
 export class PlayerWinScreen extends GameObject
 {
     constructor(scene, name="PlayerWinScreen", parent=null)
@@ -138,6 +142,8 @@ export class PlayerWinScreen extends GameObject
         this.menuButton.enabled = true;
     }
 }
+
+// Advanced collider handling interactions with the boss enemy. If the boss isn't stunned, the bullet is reflected back at the player. However, a bullet that is parried back into the boss will deal damage even when the boss isn't stunned
 
 export class PlayerBulletCollider extends AABB
 {
@@ -242,6 +248,8 @@ export class PlayerBullet extends GameObject
     }
 }
 
+// Simple collider that ensures the player cannot go through obstacles
+
 export class PlayerCollider extends AABB
 {
     constructor(gameObject, dimensions=new Vector2(26, 26))
@@ -284,6 +292,8 @@ export class PlayerCollider extends AABB
     }
 }
 
+// Simple timer that enforces a short parry window for the player
+
 export class PlayerParryTimer extends Timer
 {
     constructor(gameObject, startValue=0.05, autoPlay=false, destructive=false)
@@ -301,6 +311,8 @@ export class PlayerParryTimer extends Timer
         this.player.canParry = false;
     }
 }
+
+// Simple timer that enforces a cooldown on melee attacks for the player
 
 export class PlayerAttackTimer extends Timer
 {
@@ -320,6 +332,8 @@ export class PlayerAttackTimer extends Timer
     }
 }
 
+// Simple timer that enforces a cooldown on ranged attacks for the player
+
 export class PlayerShootTimer extends Timer
 {
     constructor(gameObject, startValue=2, autoPlay=false, destructive=false)
@@ -338,6 +352,8 @@ export class PlayerShootTimer extends Timer
         this.player.canShoot = true;
     }
 }
+
+// Complex entity that takes player input and converts it into top-down motion. Features sword attacks, shooting, parrying, blocking and dashing
 
 export class PlayerController extends LivingEntity
 {
@@ -529,6 +545,8 @@ export class PlayerController extends LivingEntity
                     {
                         if (this.canParry)
                         {
+                            // Reflect the bullet at the enemy
+
                             const _degrees = Math.atan2(_direction.y, _direction.x) * 180 / Math.PI;
 
                             let _bullet = new PlayerBullet(this.gameObject.scene, _direction, true);

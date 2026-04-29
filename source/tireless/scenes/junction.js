@@ -69,11 +69,15 @@ import
     Town
 } from "/source/tireless/scenes/town.js";
 
+// Moderate level that acts as a crossroad between 4 scenes. Teaches the player to use interactable objects, fight multiple enemies and perform backtracking
+
 export class Junction extends Scene
 {
     constructor()
     {
         super("Junction");
+
+        // Ensure that the persistent scene has a LevelTransferProperties component that refers to this scene to allow for level clearing and progression
 
         if (Engine.I.persistentScene.junctionLevelTransferProperties == undefined)
         {
@@ -81,6 +85,8 @@ export class Junction extends Scene
         }
 
         this.levelTransferProperties = Engine.I.persistentScene.junctionLevelTransferProperties;
+
+        // Declare commonly shared textures
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -118,21 +124,31 @@ export class Junction extends Scene
 
     Start()
     {
+        // Scene decor
+
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/junction.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
         this.foregroundRenderer = new GameObject(this, "Foreground Renderer").AddComponent(TilemapRenderer, new Sprite(this.foregroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/junctionProps.json");
         this.foregroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
+        // Player initialisation
+
         this.player = new Player(this);
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
+
+        // Interactable health box setup
+
+        // Health boxes that have already been used will not spawn again when a scene is revisited
 
         if (!this.levelTransferProperties.healthBoxUsed)
         {
             const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed = true; });
             _healthBox.transform.position = new Vector2(128, 128);
         }
+
+        // Collision setup
 
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
         this.rightWallCol = new GameObject(this, "RightWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
@@ -158,6 +174,8 @@ export class Junction extends Scene
         this.blBuildingCol.gameObject.transform.position = new Vector2(0, 0);
         this.brBuildingCol.gameObject.transform.position = new Vector2(256, 0);
 
+        // Level exit setups
+
         this.alleywayExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(208, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Alleyway", Alleyway)); }); this.player.controller.UnbindListeners(); });
         this.alleywayExit.transform.position = new Vector2(16, 128);
 
@@ -179,12 +197,18 @@ export class Junction extends Scene
         this.townExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(128, 48); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Town", Town)); }); this.player.controller.UnbindListeners(); });
         this.townExit.transform.position = new Vector2(128, 240);
 
+        // Key setup
+
+        // Until the player obtains the key that corresponds to this door, they cannot enter the courtyard level
+
         if (Engine.I.persistentScene.transferProperties.keys[0])
         {
             this.courtyardExit.renderer.enabled = false;
             
             this.courtyardExit.unlockedObject.renderer.enabled = true;
         }
+
+        // Define enemies for this level
 
         if (this.levelTransferProperties.enemies.length == 0)
         {
@@ -220,6 +244,8 @@ export class Junction extends Scene
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
+        // Initialise UI
+
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);
 
@@ -243,6 +269,8 @@ export class Junction extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
+
+        // Enable 2 more exits upon level clear
 
         if (this._enemyCounter == 0)
         {

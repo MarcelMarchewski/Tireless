@@ -32,6 +32,8 @@ import
     LevelTransitionFader
 } from "/source/tireless/scenes/levelTransition.js";
 
+// Simple UIElement for toggling entities on/off
+
 class EntityToggleButton extends UIElement
 {
     constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
@@ -50,6 +52,8 @@ class EntityToggleButton extends UIElement
     }
 }
 
+// Simple UIElement for swapping scenes
+
 class SwapButton extends UIElement
 {
     constructor(gameObject, canvas, animator, textData=new TextData("UI ELEMENT", "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=["source/tireless/resources/audio/UI/Tireless_SFX_UISwap.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressDown.wav", "source/tireless/resources/audio/UI/Tireless_SFX_UIPressUp.wav"], interactable=true)
@@ -64,6 +68,8 @@ class SwapButton extends UIElement
         this.gameObject.scene.OnSwapButton();
     }
 }
+
+// UIElement that triggers a change in volume for a given audio mixer
 
 class AudioVolumeButton extends UIElement
 {
@@ -118,6 +124,8 @@ class AudioVolumeButton extends UIElement
     }
 }
 
+// Component that ensures the audio mixer's current frame reflects its volume
+
 class AudioIconAnimator extends Component
 {
     constructor(gameObject)
@@ -165,6 +173,8 @@ class AudioIconAnimator extends Component
     }
 }
 
+// GameObject container for volume plus button
+
 class AudioPlusButton extends GameObject
 {
     constructor(scene, mixer, canvasObject, name="Audio Plus Button", parent=null)
@@ -177,6 +187,8 @@ class AudioPlusButton extends GameObject
         this.volumeButton = this.AddComponent(AudioVolumeButton, canvasObject.GetComponent(UICanvas), this.animator, mixer, 0.1);
     }
 }
+
+// GameObject container for volume minus button
 
 class AudioMinusButton extends GameObject
 {
@@ -191,6 +203,8 @@ class AudioMinusButton extends GameObject
     }
 }
 
+// GameObject container for sound icon
+
 class AudioIcon extends GameObject
 {
     constructor(scene, name="Audio Icon", parent=null)
@@ -203,6 +217,8 @@ class AudioIcon extends GameObject
         this.iconAnimator = this.AddComponent(AudioIconAnimator);
     }
 }
+
+// GameObject container for several audio related UIElements (audio plus/minus buttons and icons)
 
 class MediaController extends GameObject
 {
@@ -226,6 +242,8 @@ class MediaController extends GameObject
         this.mediaMinusButton.volumeButton.targets = [this.mediaIcon.iconAnimator];
     }
 }
+
+// GameObject container for a UICanvas that stores the whole settings menu
 
 class SettingsMenuCanvas extends GameObject
 {
@@ -251,6 +269,8 @@ class SettingsMenuCanvas extends GameObject
     }
 }
 
+// GameObject container for a UICanvas that stores the whole main menu
+
 class MainMenuCanvas extends GameObject
 {
     constructor(scene, name="Main Menu Canvas", parent=null)
@@ -271,6 +291,8 @@ class MainMenuCanvas extends GameObject
     }
 }
 
+// GameObject container for a scene swap button
+
 class PlayButton extends GameObject
 {
     constructor(scene, currentCanvasObject, localPosition, name="Play Button", text="PLAY", parent=null)
@@ -285,6 +307,8 @@ class PlayButton extends GameObject
         this.sceneSwapper = this.AddComponent(SwapButton, currentCanvasObject.GetComponent(UICanvas), this.animator, new TextData(text, "8px VCR_OSD_MONO", "white", undefined, undefined, Engine.I.UI_TEXT_DEFAULT_LAYER), 64, 32);
     }
 }
+
+// GameObject container for an entity toggling button (switches between main menu/settings menu)
 
 class NextCanvasButton extends GameObject
 {
@@ -301,6 +325,8 @@ class NextCanvasButton extends GameObject
     }
 }
 
+// Scene that displays the title, allows the player to load save files, change preferences and play the game
+
 export class MainMenu extends Scene
 {
     constructor()
@@ -310,6 +336,7 @@ export class MainMenu extends Scene
         Engine.I.menuBar.style.display = "";
         Engine.I.controlsBar.style.display = "";
 
+        Engine.I.saveButton.style.display = "none";
         Engine.I.loadButton.style.display = "";
 
         this.backgroundTexture = new Image();
@@ -374,6 +401,8 @@ export class MainMenu extends Scene
 
     OnSwapButton()
     {
+        // Create a level transition object that will trigger the swap to the Alleyway scene once the animation has played out
+
         let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Alleyway", Alleyway)); });
     }
 }

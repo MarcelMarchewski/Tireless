@@ -57,11 +57,15 @@ import
     Town
 } from "/source/tireless/scenes/town.js";
 
+// Safe level where the player can spend their score on utilities such as the gun or the key to the courtyard
+
 export class Shop extends Scene
 {
     constructor()
     {
         super("Shop");
+
+        // Ensure that the persistent scene has a LevelTransferProperties component that refers to this scene to allow for level clearing and progression
 
         if (Engine.I.persistentScene.townLevelTransferProperties == undefined)
         {
@@ -69,6 +73,8 @@ export class Shop extends Scene
         }
 
         this.levelTransferProperties = Engine.I.persistentScene.townLevelTransferProperties;
+
+        // Declare commonly shared textures
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -103,12 +109,18 @@ export class Shop extends Scene
 
     Start()
     {
+        // Scene decor
+
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/shop.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
+
+        // Player initialisation
 
         this.player = new Player(this);
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
+
+        // Collision setup
 
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
 
@@ -126,6 +138,8 @@ export class Shop extends Scene
         this.rWallTopCol.gameObject.transform.position = new Vector2(256, 192);
         this.rWallBottomCol.gameObject.transform.position = new Vector2(256, 64);
 
+        // Exit setup
+
         this.townExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(112, 128); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Town", Town)); }); this.player.controller.UnbindListeners(); });
         this.townExit.transform.position = new Vector2(240, 128);
 
@@ -133,6 +147,8 @@ export class Shop extends Scene
         this.townExit.unlockedObject.renderer.enabled = true;
 
         this.townExit.transform.rotation = -90;
+
+        // Health box setup
 
         if (this.levelTransferProperties.healthBoxUsed == undefined)
         {
@@ -144,6 +160,8 @@ export class Shop extends Scene
             const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed[0] = true; });
             _healthBox.transform.position = new Vector2(128, 128);
         }
+
+        // Shop item setup
 
         if (!Engine.I.persistentScene.transferProperties.playerHasGun)
         {
@@ -158,6 +176,8 @@ export class Shop extends Scene
         }
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
+
+        // Initialise UI
 
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);

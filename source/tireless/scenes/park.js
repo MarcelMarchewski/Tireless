@@ -55,11 +55,15 @@ import
     Junction
 } from "/source/tireless/scenes/junction.js";
 
+// Moderate scene that teaches the player how to parry incoming ranged attacks
+
 export class Park extends Scene
 {
     constructor()
     {
         super("Park");
+
+        // Ensure that the persistent scene has a LevelTransferProperties component that refers to this scene to allow for level clearing and progression
 
         if (Engine.I.persistentScene.parkLevelTransferProperties == undefined)
         {
@@ -67,6 +71,8 @@ export class Park extends Scene
         }
 
         this.levelTransferProperties = Engine.I.persistentScene.parkLevelTransferProperties;
+
+        // Declare commonly shared textures
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -107,6 +113,8 @@ export class Park extends Scene
 
     Start()
     {
+        // Scene decor
+
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/park.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
@@ -116,9 +124,13 @@ export class Park extends Scene
         this.parkRenderer = new GameObject(this, "Park Renderer").AddComponent(TilemapRenderer, new Sprite(this.parkTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/parkGrass.json");
         this.parkRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
 
+        // Player initialisation
+
         this.player = new Player(this);
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
+
+        // Health box setup
 
         if (this.levelTransferProperties.healthBoxUsed == undefined)
         {
@@ -136,6 +148,8 @@ export class Park extends Scene
             const _healthBox = new HealthBox(this, () => { this.levelTransferProperties.healthBoxUsed[1] = true; });
             _healthBox.transform.position = new Vector2(208, 48);
         }
+
+        // Collision setup
 
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
         this.rightWallCol = new GameObject(this, "RightWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
@@ -159,11 +173,15 @@ export class Park extends Scene
 
         this.waterCol.gameObject.transform.position = new Vector2(128, 48);
 
+        // Exit setups
+
         this.junctionExit = new LevelSwapper(this, new Vector2(16, 16), () => { Engine.I.persistentScene.transferProperties.health = this.player.controller.health; Engine.I.persistentScene.transferProperties.position = new Vector2(128, 48); let _fader = new LevelTransitionFader(this, () => { Engine.I.LoadScene(new LevelTransition("Junction", Junction)); }); this.player.controller.UnbindListeners(); });
         this.junctionExit.transform.position = new Vector2(128, 240);
 
         this.junctionExit.renderer.enabled = false;
         this.junctionExit.unlockedObject.renderer.enabled = true;
+
+        // Define enemies
 
         if (this.levelTransferProperties.enemies.length == 0)
         {
@@ -199,6 +217,8 @@ export class Park extends Scene
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
+        // Initialise UI
+
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);
 
@@ -222,7 +242,5 @@ export class Park extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
-
-        console.info()
     }
 }

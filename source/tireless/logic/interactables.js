@@ -25,6 +25,8 @@ import
     PlayerOnlyCollider
 } from "/source/tireless/tireless.js";
 
+// Base class for items that the player can pick up
+
 export class InteractableCollider extends AABB
 {
     constructor(gameObject, dimensions, onInteractableUsed=() => {  })
@@ -34,6 +36,8 @@ export class InteractableCollider extends AABB
         this.onInteractableUsed = onInteractableUsed;
     }
 }
+
+// Base class for items that the player can buy
 
 export class ShopItemCollider extends InteractableCollider
 {
@@ -65,6 +69,8 @@ export class ShopItemCollider extends InteractableCollider
     }
 }
 
+// Gun that can be purchased. Unlocks the shooting ability
+
 export class ShopGun extends GameObject
 {
     constructor(scene, name="ShopGun", parent=null)
@@ -83,6 +89,8 @@ export class ShopGun extends GameObject
     }
 }
 
+// Key that can be purchased. Unlocks the courtyard level
+
 export class ShopKey extends GameObject
 {
     constructor(scene, name="ShopKey", parent=null)
@@ -97,6 +105,8 @@ export class ShopKey extends GameObject
         this.collider = this.AddComponent(ShopItemCollider, new Vector2(24, 16), 650, () => { Engine.I.persistentScene.transferProperties.keys[0] = true; });
     }
 }
+
+// Collider that heals the player by 25 units when interacted with
 
 export class HealthBoxCollider extends InteractableCollider
 {
@@ -135,6 +145,8 @@ export class HealthBox extends GameObject
     }
 }
 
+// Collider that handles the activation of a key after being interacted with
+
 export class KeyCollider extends InteractableCollider
 {
     constructor(gameObject, dimensions, id, onInteractableUsed=() => {  })
@@ -171,6 +183,8 @@ export class Key extends GameObject
         this.collider = this.AddComponent(KeyCollider, new Vector2(16, 16), id, onInteractableUsed);
     }
 }
+
+// Triggers a callback when interacted with, allowing the current scene to be swapped
 
 export class LevelSwapperCollider extends InteractableCollider
 {

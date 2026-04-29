@@ -59,11 +59,15 @@ import
     Town
 } from "/source/tireless/scenes/town.js";
 
+// The most challenging scene. Features a boss variant enemy who can do ranged and melee attacks
+
 export class Dojo extends Scene
 {
     constructor()
     {
         super("Dojo");
+
+        // Ensure that the persistent scene has a LevelTransferProperties component that refers to this scene to allow for level clearing and progression
 
         if (Engine.I.persistentScene.dojoLevelTransferProperties == undefined)
         {
@@ -71,6 +75,8 @@ export class Dojo extends Scene
         }
 
         this.levelTransferProperties = Engine.I.persistentScene.dojoLevelTransferProperties;
+
+        // Declare commonly shared textures
 
         this.playerTexture = new Image();
         this.playerTexture.src = "source/tireless/resources/textures/Shared/tirelessPlayerSamurai.png";
@@ -111,13 +117,19 @@ export class Dojo extends Scene
 
     Start()
     {
+        // Scene decor
+
         this.backgroundRenderer = new GameObject(this, "Background Renderer").AddComponent(TilemapRenderer, new Sprite(this.backgroundTexture, undefined, undefined, new Vector2(32, 32)), "source/tireless/resources/data/tilemaps/shop.json");
         this.backgroundRenderer.gameObject.transform.localPosition = new Vector2(128, 128);
         this.backgroundRenderer.gameObject.transform.scale = new Vector2(-1, 1);
 
+        // Initialise player
+
         this.player = new Player(this);
 
         this.player.transform.position = Engine.I.persistentScene.transferProperties.position;
+
+        // Collision setup
 
         this.leftWallCol = new GameObject(this, "LeftWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
         this.rightWallCol = new GameObject(this, "RightWallCol").AddComponent(WorldCollider, new Vector2(32, 256));
@@ -130,6 +142,8 @@ export class Dojo extends Scene
 
         this.topWallCol.gameObject.transform.position = new Vector2(128, 256);
         this.bottomWallCol.gameObject.transform.position = new Vector2(128, 0);
+
+        // Health box setup
 
         if (this.levelTransferProperties.healthBoxUsed == undefined)
         {
@@ -148,10 +162,14 @@ export class Dojo extends Scene
             _healthBox.transform.position = new Vector2(192, 64);
         }
 
+        // Define enemies
+
         if (!Engine.I.persistentScene.transferProperties.gameComplete)
         {
             this.levelTransferProperties.enemies = [[new Vector2(192, 128), true]];
         }
+
+        // If the game has been completed, spawn 3 boss enemies
 
         else
         {
@@ -176,6 +194,8 @@ export class Dojo extends Scene
 
         this.player.controller.health = Engine.I.persistentScene.transferProperties.health;
 
+        // Initialise UI
+
         this.blockUI = new BlockUI(this);
         this.blockUI.transform.position = new Vector2(32, 8);
 
@@ -199,6 +219,8 @@ export class Dojo extends Scene
     set enemyCounter(_value)
     {
         this._enemyCounter = _value;
+
+        // If the boss is dead, the game has been completed
 
         if (_value == 0)
         {

@@ -15,6 +15,8 @@ import
     Engine
 } from "/source/engine/rebound.js";
 
+// Basic timer for ending the level transition
+
 export class LevelTransitionDisplayTimer extends Timer
 {
     constructor(gameObject, startValue=1.5, autoplay=true, destructive=true)
@@ -33,6 +35,8 @@ export class LevelTransitionDisplayTimer extends Timer
         this.gameObject.animator.Play();
     }
 }
+
+// Complex scene that accepts the type of the next level and its arguments, shows the user where they are travelling to, then loads the next scene
 
 export class LevelTransition extends Scene
 {
@@ -82,6 +86,8 @@ export class LevelTransition extends Scene
         }
     }
 }
+
+// GameObject container for rendering the fade in/out animation that overlays the screen during level swaps
 
 export class LevelTransitionFader extends GameObject
 {

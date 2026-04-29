@@ -16,6 +16,8 @@ import
     MainMenu
 } from "/source/tireless/scenes/mainMenu.js";
 
+// Simple timer for swapping to the next scene after an animation has played out
+
 class SceneSwapTimer extends Timer
 {
     constructor(gameObject)
@@ -28,6 +30,8 @@ class SceneSwapTimer extends Timer
         this.gameObject.scene.SwapToMain();
     }
 }
+
+// Simple timer for triggering the fade out animation with the splash screen
 
 class RunTimer extends Timer
 {
@@ -54,6 +58,8 @@ class BasicSprite extends GameObject
         this.animator = this.AddComponent(Animator, this.renderer, frameCount, [new AnimationClip("SplashScreenAnimation", 0, frameCount, 0.2, false, false)]);
     }
 }
+
+// Basic scene for rendering the splash screen animation and continuing to the main menu
 
 export class SplashScreen extends Scene
 {

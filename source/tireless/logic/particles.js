@@ -11,6 +11,8 @@ import
     Engine
 } from "/source/engine/rebound.js";
 
+// Base class for simple Particle effects, highly customisable 
+
 export class Particle extends GameObject
 {
     constructor(scene, sprite, frameCount, animationClip, destructive=true, name="Particle", parent=null)

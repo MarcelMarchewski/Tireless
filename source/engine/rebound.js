@@ -1,6 +1,6 @@
 "use strict";
 
-// NOTE: WHEN RENDERING SUB Y AXIS FROM CANVAS HEIGHT FOR INTUITIVE Y AXIS
+// Data type for storing two integer or float values. Mainly used for coordinates, scales and dimensions
 export class Vector2
 {
     constructor(x=0, y=0)
@@ -14,11 +14,15 @@ export class Vector2
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }
 
+    // Returns vector with same direction but a magnitude of 1
+
     get normalised()
     {
-        if (this.magnitude == 0) { return Vector2.zero; }
+        const _mag = this.magnitude;
 
-        return new Vector2(this.x / this.magnitude, this.y / this.magnitude);
+        if (_mag == 0) { return Vector2.zero; }
+
+        return new Vector2(this.x / _mag, this.y / _mag);
     }
 
     Add(_other)
@@ -45,13 +49,19 @@ export class Vector2
         this.y /= _other.y;
     }
 
+    // Preserves this vector's direction but changes its magnitude to one
+
     Normalise()
     {
-        if (this.magnitude == 0) { return; }
+        const _mag = this.magnitude;
+        
+        if (_mag == 0) { return; }
 
-        this.x /= this.magnitude;
-        this.y /= this.magnitude;
+        this.x /= _mag;
+        this.y /= _mag;
     }
+
+    // Common Vector2 constants for shorthand usage e.g _invertedVec = Vector2.Multiply(_invertedVec, Vector2.negativeOne);
 
     static get negativeOne()
     {
@@ -88,6 +98,8 @@ export class Vector2
         return new Vector2(1, 0);
     }
 
+    // Basic component-wise operations
+
     static Add(_a, _b)
     {   
         return new Vector2(_a.x + _b.x, _a.y + _b.y);
@@ -107,6 +119,8 @@ export class Vector2
     {
         return new Vector2(_a.x / _b.x, _a.y / _b.y);
     }
+
+    // Crucial 2D math utility operations
 
     static Rotate(_target, _angle)
     {
@@ -138,6 +152,8 @@ export class Vector2
     }
 }
 
+// Core system for tracking the position, rotation and scale of game objects. Parenting allows for hierarchy-style behaviour
+
 export class Transform
 {
     constructor(gameObject, localPosition=Vector2.zero, localRotation=0, localScale=Vector2.one)
@@ -162,6 +178,8 @@ export class Transform
     {   
         if (this._parent == _newParent) { return; }
 
+        // Store current position, rotation and scale before changing parent (this data may change as a result)
+
         const _worldPosition = this.position;
         const _worldRotation = this.rotation;
         const _worldScale = this.scale;
@@ -178,12 +196,16 @@ export class Transform
             this._parent.Internal_AddChild(this);
         }
 
+        // If entirely detached, the world position, rotation and scale should be preserved
+
         if (this.parent == null)
         {
             this.localPosition = _worldPosition;
             this.localRotation = _worldRotation;
             this.localScale = _worldScale;
         }
+
+        // If attaching to a new parent, the world position, rotation and scale should be converted into local space
 
         else
         {
@@ -192,6 +214,8 @@ export class Transform
             this.scale = _worldScale;
         }
     }
+
+    // Converts and returns local position into world space
 
     get position()
     {
@@ -207,6 +231,8 @@ export class Transform
             return this.localPosition;
         }
     }
+
+    // Converts and stores world position into local space
 
     set position(_newPosition)
     {
@@ -227,6 +253,8 @@ export class Transform
         }
     }
 
+    // If this transform is a child, apply parent rotation then return value (local to world)
+
     get rotation()
     {
         if (this.parent != null)
@@ -239,6 +267,8 @@ export class Transform
             return this.localRotation;
         }
     }
+
+    // If this transform is a child, offset the parent rotation by the new value (world to local)
 
     set rotation(_newRotation)
     {
@@ -253,6 +283,8 @@ export class Transform
         }
     }
 
+    // Converts and returns local scale into world space
+
     get scale()
     {
         if (this.parent != null)
@@ -265,6 +297,8 @@ export class Transform
             return this.localScale;
         }
     }
+
+    // Converts and stores world scale into local space
 
     set scale(_newScale)
     {
@@ -318,6 +352,8 @@ export class Transform
     }
 }
 
+// Base class for Components and GameObjects, allows for an entity life cycle
+
 export class Entity
 {
     constructor()
@@ -327,6 +363,8 @@ export class Entity
 
         this._destroyed = false;
     }
+
+    // Base variants of functions should NOT be overridden by inheriting classes
 
     Base_Destroy()
     {
@@ -340,6 +378,8 @@ export class Entity
     OnEnable() {  }
     OnDisable() {  }
     Destroy() {  }
+
+    // Enabling/disabling entities includes/excludes them within the engine's update loops
 
     get enabled()
     {
@@ -364,6 +404,8 @@ export class Entity
         }
     }
 
+    // Return or set current parent enable state. Important for behaviours such as different pages of UI
+
     get parentEnabled()
     {
         return this._parentEnabled;
@@ -374,6 +416,8 @@ export class Entity
         this._parentEnabled = _value;
     }
 }
+
+// Standard GameObject class. Allows for the simple creation of prefab assets through inheritance, component management and hierarchy behaviour
 
 export class GameObject extends Entity
 {
@@ -397,6 +441,8 @@ export class GameObject extends Entity
             this.transform.parent = parent;
         }
 
+        // Ensure that GameObjects are always at least parented to their scene's root, allowing them to be picked up by the update cycle
+
         else
         {
             this.transform.parent = this.scene.root.transform;
@@ -404,6 +450,8 @@ export class GameObject extends Entity
 
         this._components = [];
     }
+
+    // Creates and attaches component instance with optional arguments
 
     AddComponent(_componentType, ...args)
     {
@@ -426,10 +474,14 @@ export class GameObject extends Entity
         return this._components.filter((_comp) => _comp instanceof _componentType);
     }
 
+    // Recursively destroy every child GameObject and their attached components
+
     Destroy()
     {
         for (let i = 0; i < this.transform.childCount; i++)
         {
+            // i-- is used here to prevent index mismatch while iterating through and simultaneously modifying array
+
             this.transform.GetChild(i).gameObject.Base_Destroy();
             i--;
         }
@@ -442,6 +494,8 @@ export class GameObject extends Entity
 
         this.transform.parent = null;
     }
+
+    // Update all components if this object is active
 
     Base_Update()
     {
@@ -458,6 +512,8 @@ export class GameObject extends Entity
     {
         return this._enabled;
     }
+
+    // When enable state is changed, ensure that all child objects follow suit and stop updating along with their parent
 
     set enabled(_value)
     {
@@ -502,6 +558,8 @@ export class GameObject extends Entity
         }
     }
 
+    // Remove component instance from this object
+
     Internal_RemoveComponent(_targetComponent)
     {
         const _compIndex = this._components.indexOf(_targetComponent);
@@ -511,6 +569,8 @@ export class GameObject extends Entity
         this._components.splice(_compIndex, 1);
     }
 }
+
+// Base class for attachable game logic with lifecycle events
 
 export class Component extends Entity
 {
@@ -523,6 +583,8 @@ export class Component extends Entity
         this._hasStarted = false;
     }
 
+    // Start is invoked when the script is enabled for the first time
+
     Base_Start()
     {
         if (this.enabled && !this._hasStarted)
@@ -533,6 +595,8 @@ export class Component extends Entity
         }
     }
 
+    // Update is invoked every frame while the component is enabled
+
     Base_Update()
     {
         if (this.enabled)
@@ -540,6 +604,8 @@ export class Component extends Entity
             this.Update();
         }
     }
+
+    // Remove component from GameObject and invoke OnDestroy
 
     Destroy()
     {
@@ -557,6 +623,8 @@ export class Component extends Entity
     OnDestroy() {  }
 }
 
+// Tracks cursor position, useful for UI 
+
 export class CursorManager extends Component
 {
     constructor(gameObject)
@@ -569,6 +637,8 @@ export class CursorManager extends Component
 
         this._cursorPosition = Vector2.zero;
     }
+
+    // Converts coordinates from window space to canvas space (0, 0 should refer to the bottom left corner of the canvas)
 
     Internal_SetCursorPosition(_event)
     {
@@ -584,6 +654,8 @@ export class CursorManager extends Component
             this._cPosListeners[i](this._cursorPosition);
         }
     }
+
+    // Ensure that listeners follow correct state rules
 
     Start()
     {
@@ -610,6 +682,8 @@ export class CursorManager extends Component
         return this._cursorPosition;
     }
 
+    // Other components can listen for mouse movement events through their own callback functions registered here
+
     AddCursorPositionListener(_listener)
     {
         this._cPosListeners.push(_listener);
@@ -624,6 +698,8 @@ export class CursorManager extends Component
         this._cPosListeners.splice(_cPosListenerIndex, 1);
     }
 }
+
+// Uses the cursor's position to detect if the mouse is hovering over a box on the screen
 
 export class CursorBoxCollider extends Component
 {
@@ -641,6 +717,8 @@ export class CursorBoxCollider extends Component
 
         this._isColliding = false;
     }
+
+    // State management
 
     OnDisable()
     {
@@ -699,6 +777,8 @@ export class CursorBoxCollider extends Component
     {
         const _cursorPos = this._cursorManager.cursorPosition;
 
+        // Using AABB to check if the point (cursor position) lies within the box
+
         if (_cursorPos.x >= this.gameObject.transform.position.x - this.width / 2 
         && _cursorPos.x <= this.gameObject.transform.position.x + this.width / 2
         && _cursorPos.y >= this.gameObject.transform.position.y - this.height / 2
@@ -726,6 +806,8 @@ export class CursorBoxCollider extends Component
         }
     }
 
+    // Functions that can be overridden by inheriting components
+
     OnCursorCollideStart() {  }
 
     OnCursorCollideUpdate() {  }
@@ -736,6 +818,8 @@ export class CursorBoxCollider extends Component
 
     OnCursorCollideEnd() {  }
 }
+
+// Data type that represents a renderable sprite with its own texture, layer priority and dimensions
 
 export class Sprite
 {
@@ -749,6 +833,8 @@ export class Sprite
         
         this.sourceDimensions = sourceDimensions;
     }
+
+    // Source position refers to the x and y coordinates of the sprite sheet we want to originate from
 
     get sourcePosition()
     {
@@ -768,6 +854,8 @@ export class Sprite
         }
     }
 
+    // Source dimensions refers to the size of each individual frame within the sprite sheet
+
     get sourceDimensions()
     {
         return this._sourceDimensions;
@@ -782,6 +870,8 @@ export class Sprite
 
         else
         {
+            // If no source dimensions are provided, the total sprite dimensions are used instead
+
             if (this.texture.complete)
             {
                 this._sourceDimensions = new Vector2(this.texture.width, this.texture.height);
@@ -791,6 +881,8 @@ export class Sprite
             {
                 this._sourceDimensions = Vector2.zero;
 
+                // Wait for the texture to finish loading before reading properties
+
                 this.texture.onload = () => 
                 {
                     this._sourceDimensions = new Vector2(this.texture.width, this.texture.height);
@@ -799,6 +891,8 @@ export class Sprite
         }
     }
 }
+
+// Component that displays the given Sprite at the appropriate position, rotation and scale
 
 export class SpriteRenderer extends Component
 {
@@ -811,6 +905,8 @@ export class SpriteRenderer extends Component
         this._queued = false;
     }
 
+    // Add this renderer to the engine's render queue
+
     Enqueue()
     {
         if (!this._queued)
@@ -821,6 +917,8 @@ export class SpriteRenderer extends Component
         }
     }
 
+    // Remove this renderer from the engine's render queue
+
     Deque()
     {
         if (this._queued)
@@ -830,6 +928,8 @@ export class SpriteRenderer extends Component
             this._queued = false;
         }
     }
+
+    // State management that enqueues/dequeues sprite depending on lifecycle
 
     Start()
     {
@@ -856,6 +956,8 @@ export class SpriteRenderer extends Component
         return this._sprite;
     }
 
+    // Fall back to missing texture if null value is provided
+
     set sprite(_value)
     {
         if (_value != null)
@@ -870,6 +972,8 @@ export class SpriteRenderer extends Component
     }
 }
 
+// Component that displays text data to the screen
+
 export class TextRenderer extends Component
 {
     constructor(gameObject, data=null)
@@ -880,6 +984,8 @@ export class TextRenderer extends Component
         
         this._queued = false;
     }
+
+    // Life cycle states
 
     Start()
     {
@@ -900,6 +1006,8 @@ export class TextRenderer extends Component
     {
         this.Deque();
     }
+
+    // Render queue management
 
     Enqueue()
     {
@@ -926,6 +1034,8 @@ export class TextRenderer extends Component
         return this._textData;
     }
 
+    // Fall back to default text style in case of null value
+
     set textData(_value)
     {
         if (_value != null)
@@ -939,6 +1049,8 @@ export class TextRenderer extends Component
         }
     }
 }
+
+// Hierarchal audio mixer that controls volume and mute state for AudioPlayers
 
 export class AudioMixer
 {
@@ -958,15 +1070,21 @@ export class AudioMixer
         this.parentMixer = parentMixer;
     }
 
+    // Local volume with no other influences
+
     get localVolumePure()
     {
         return this._volume;
     }
 
+    // Local volume with muting applied
+
     get localVolume()
     {
         return this._volume * this._muteValue;
     }
+
+    // Final volume with muting and parent mixer influence
 
     get volume()
     {
@@ -981,6 +1099,8 @@ export class AudioMixer
         }
     }
 
+    // Updates local volume and saves it in localStorage
+
     set volume(_value)
     {
         this._volume = _value;
@@ -989,6 +1109,8 @@ export class AudioMixer
 
         this.Internal_UpdateVolumes();
     }
+
+    // Initialises volume from localStorage or falls back to default
 
     set volumeInitial(_value)
     {
@@ -1004,6 +1126,8 @@ export class AudioMixer
             this.volume = Number(localStorage.getItem(this.name + "LocalVolumePure"));
         }
     }
+
+    // Boolean interface for mute state
 
     get muted()
     {
@@ -1042,6 +1166,8 @@ export class AudioMixer
         }
     }
 
+    // Parent mixer for hierarchal volume control
+
     get parentMixer()
     {
         return this._parentMixer;
@@ -1066,6 +1192,8 @@ export class AudioMixer
         this.Internal_UpdateVolumes();
     }
 
+    // Applies volume changes to all attached AudioPlayers and AudioMixers
+
     Internal_UpdateVolumes()
     {
         for (let i = 0; i < this._audioPlayers.length; i++)
@@ -1078,6 +1206,8 @@ export class AudioMixer
             this._childMixers[i].Internal_UpdateVolumes();
         }
     }
+
+    // Functions for managing which mixers/players are assigned to this mixer
 
     AddChild(_child)
     {
@@ -1108,11 +1238,15 @@ export class AudioMixer
     }
 }
 
+// Component for loading and playing audio with mixer influence
+
 export class AudioPlayer extends Component
 {
     constructor(gameObject, file, mixer=null, volume=1, loop=false, doAutoCatchup=false)
     {
         super(gameObject);
+
+        // JavaScript audio system requires an AudioContext
 
         this._ctx = Engine.I.audioCtx;
 
@@ -1144,6 +1278,8 @@ export class AudioPlayer extends Component
         this.loop = loop;
     }
 
+    // States that only allow audio to play while enabled
+
     OnEnable()
     {
         if (this._disablePause)
@@ -1174,6 +1310,8 @@ export class AudioPlayer extends Component
         this.mixer.RemoveAudioPlayer(this);
     }
 
+    // Asynchronously fetch and decode audio data into buffer
+
     async LoadAudio()
     {
         const _data = await fetch(this._file);
@@ -1181,6 +1319,8 @@ export class AudioPlayer extends Component
 
         this._buffer = await this._ctx.decodeAudioData(_arrayBuffer);
     }
+
+    // Local volume multiplier applied before mixer volume
 
     get volume()
     {
@@ -1193,6 +1333,8 @@ export class AudioPlayer extends Component
 
         this.Internal_SetVolume();
     }
+
+    // Local mute boolean
 
     get muted()
     {
@@ -1218,6 +1360,8 @@ export class AudioPlayer extends Component
     {
         return this._mixer;
     }
+
+    // Applies final volume to gain node
 
     set mixer(_newMixer)
     {
@@ -1247,6 +1391,8 @@ export class AudioPlayer extends Component
     {
         this._gain.gain.value = this._volume * this._mixer.volume * this._muteValue;
     }
+
+    // Creates and configures a new buffer source for audio file streaming
 
     Internal_CreateSource()
     {
@@ -1282,6 +1428,8 @@ export class AudioPlayer extends Component
         };
     }
 
+    // Starts/resumes playback and ensures that the audio is loaded and active
+
     async Play()
     {
         if (!this._buffer)
@@ -1306,6 +1454,8 @@ export class AudioPlayer extends Component
         this._playing = true;
     }
 
+    // Pause playback and store current playback position
+
     Pause()
     {
         if (!this._playing || this._src == null) { return; }
@@ -1322,6 +1472,8 @@ export class AudioPlayer extends Component
         this._src = null;
         this._playing = false;
     }
+
+    // Halt playback and return to start of audio
 
     Stop()
     {
@@ -1340,6 +1492,8 @@ export class AudioPlayer extends Component
         this._playing = false;
     }
 
+    // Allows for reuse of component for multiple files
+
     SetFile(_newFile)
     {
         this._file = _newFile;
@@ -1348,6 +1502,8 @@ export class AudioPlayer extends Component
         this.Stop();
     }
 }
+
+// Represents a sprite animation clip with frame range, speed and playback settings
 
 export class AnimationClip
 {
@@ -1367,6 +1523,8 @@ export class AnimationClip
     }
 }
 
+// Component controlling sprite sheet animation playback with AnimationClips
+
 export class Animator extends Component
 {
     constructor(gameObject, spriteRenderer, frameCount, clips=[])
@@ -1384,6 +1542,8 @@ export class Animator extends Component
         this._frames = [];
 
         this._clips = clips;
+
+        // Ensure that there is always at least one animation clip available
 
         if (this._clips.length == 0)
         {
@@ -1410,6 +1570,8 @@ export class Animator extends Component
         this.SetTexture(this.spriteRenderer.sprite.texture, this.frameCount);
     }
 
+    // Progress animation through a timer using deltaTime for framerate independence
+
     Update()
     {
         if (this._frames.length == 0 || !this._playing) { return; }
@@ -1424,6 +1586,8 @@ export class Animator extends Component
         }
     }
 
+    // Start/resume playback
+
     Play()
     {
         this._timer = 0;
@@ -1431,15 +1595,21 @@ export class Animator extends Component
         this._playing = true;
     }
 
+    // Enable reversed playback
+
     Reverse()
     {
         this._reversing = true;
     }
 
+    // Disable reversed playback
+
     Forward()
     {
         this._reversing = false;
     }
+
+    // Pause playback and preserve current progress through AnimationClip
 
     Pause()
     {
@@ -1447,6 +1617,8 @@ export class Animator extends Component
 
         this._playing = false;
     }
+
+    // Halt playback and revert to first frame of AnimationClip
 
     Stop()
     {
@@ -1458,6 +1630,8 @@ export class Animator extends Component
 
         this.Internal_RunFrame();
     }
+
+    // Switch active AnimationClip to another via name and restart playback
 
     SetClip(_name)
     {
@@ -1481,6 +1655,8 @@ export class Animator extends Component
             }
         }
     }
+
+    // Modify current sprite source position to match current frame
 
     Internal_RunFrameWithLoopCheck()
     {
@@ -1548,6 +1724,8 @@ export class Animator extends Component
         this.Internal_RunFrameWithLoopCheck();
     }
 
+    // Use provided frame count to calculate positions of each frame
+
     SetTexture(_texture, _frameCount=this.frameCount)
     {
         this.spriteRenderer.sprite.texture = _texture;
@@ -1593,6 +1771,8 @@ export class Animator extends Component
     }
 }
 
+// Component for rendering tilemaps from JSON data
+
 export class TilemapRenderer extends SpriteRenderer
 {
     constructor(gameObject, sprite=null, dataPath=null)
@@ -1601,6 +1781,8 @@ export class TilemapRenderer extends SpriteRenderer
 
         this.dataPath = dataPath;
     }
+
+    // Run HTTP request for required JSON data
 
     GetData()
     {
@@ -1611,6 +1793,8 @@ export class TilemapRenderer extends SpriteRenderer
 
         return JSON.parse(_xmlHTTP.response);
     }
+
+    // Calculate source position each tile for future assembly with JSON
 
     Internal_GenerateTiles()
     {
@@ -1633,6 +1817,8 @@ export class TilemapRenderer extends SpriteRenderer
 
         return _tmp;
     }
+
+    // Wait for textures to load and then calculate tiles
 
     Internal_TryGenerateTiles()
     {
@@ -1678,6 +1864,8 @@ export class TilemapRenderer extends SpriteRenderer
         return this._sprite;
     }
 
+    // Fallback to missing texture if null value provided
+
     set sprite(_value)
     {
         if (_value != null)
@@ -1697,6 +1885,8 @@ export class TilemapRenderer extends SpriteRenderer
     }
 }
 
+// Axis aligned bounding box algorithm running as a component
+
 export class AABB extends Component
 {
     constructor(gameObject, dimensions)
@@ -1708,6 +1898,8 @@ export class AABB extends Component
 
         this._registered = false;
     }
+
+    // Ensure that collider manager is only checking this instance while it is enabled
 
     Start()
     {
@@ -1751,10 +1943,14 @@ export class AABB extends Component
         this.OnCollisionDetected(_other);
     }
 
+    // Function to be overridden by inheriting components
+
     OnCollisionDetected(_other)
     {
 
     }
+
+    // Compare the positions and dimensions of this instance and another AABB. If they intersect, a collision is detected
 
     CompareAgainst(_other)
     {
@@ -1774,6 +1970,8 @@ export class AABB extends Component
         }
     }
 }
+
+// Component that compares important colliders against the full list of colliders present in the scene
 
 class ColliderManager extends Component
 {
@@ -1798,6 +1996,8 @@ class ColliderManager extends Component
             this._colliders.splice(_index, 1);
         }
     }
+
+    // Function that only triggers a comparison between two colliders if neither try to ignore the other's type
 
     Compare(_targetCol)
     {
@@ -1831,6 +2031,8 @@ class ColliderManager extends Component
         }
     }
 
+    // Returns whether a given coordinate is positioned within a collider
+
     PointInAABB(_point, _col)
     {
         const _colPos = _col.gameObject.transform.position;
@@ -1843,6 +2045,8 @@ class ColliderManager extends Component
         );
     }
 
+    // Physics utility for checking if a collision can be found in a direction from a given point
+    
     Raycast(_origin, _direction, _maxDistance, _step=1, _ignoreTypes=[], _includeTypes=[])
     {
         const _dir = _direction.normalised;
@@ -1879,14 +2083,19 @@ class ColliderManager extends Component
 
                 if (this.PointInAABB(_point, this._colliders[j]))
                 {
+                    // Return with the point at which the ray collided and the collider it found
                     return [_point, this._colliders[j]];
                 }
             }
         }
 
+        // Return with the endpoint of the ray and a null pointer indicating no collider was found
+
         return [Vector2.Add(_origin, Vector2.Multiply(_dir, new Vector2(_maxDistance, _maxDistance))), null];
     }
 }
+
+// Properties of how a piece of text should be formatted
 
 export class TextData
 {
@@ -1904,6 +2113,8 @@ export class TextData
     }
 }
 
+// Component that allows other systems to listen for user input with both keyboard/mouse and controller 
+
 export class InputManager extends Component
 {
     constructor(gameObject)
@@ -1911,6 +2122,8 @@ export class InputManager extends Component
         super(gameObject);
 
         this.inputMode = 0;
+
+        // Event listener functions need to be bound to this instance
 
         this.OnCursorPositionUpdate = this.OnCursorPositionUpdate.bind(this);
 
@@ -1964,6 +2177,8 @@ export class InputManager extends Component
         }
     }
 
+    // Check for a valid controller to read input from
+
     Update()
     {
         if (this._currentGamepadIndex == null) { return; }
@@ -1971,6 +2186,8 @@ export class InputManager extends Component
         const _gamepad = navigator.getGamepads()[this._currentGamepadIndex];
 
         if (_gamepad == null) { return; }
+
+        // Iterate through each controller button and store their states
 
         for (let i = 0; i < _gamepad.buttons.length; i++)
         {
@@ -1992,6 +2209,8 @@ export class InputManager extends Component
             this._lastGamepadInputs[i] = _currentState;
         }
 
+        // Iterate through each joystick on the controller and store their x and y output 
+
         for (let i = 0; i < _gamepad.axes.length; i += 2)
         {
             const _currentValueX = _gamepad.axes[i];
@@ -1999,6 +2218,8 @@ export class InputManager extends Component
 
             const _lastValueX = this._lastGamepadAxisValues[i] || 0;
             const _lastValueY = this._lastGamepadAxisValues[i + 1] || 0;
+
+            // Stick threshold prevents tiny values from causing inaccuracy
 
             if (Math.abs(_currentValueX - _lastValueX) > this.STICK_THRESHOLD || Math.abs(_currentValueY - _lastValueY) > this.STICK_THRESHOLD)
             {
@@ -2071,10 +2292,14 @@ export class InputManager extends Component
 
     OnCursorPositionUpdate()
     {
+        // Input mode refers to 0 as keyboard/mouse and 1 as controller
+
         this.inputMode = 0;
 
         document.body.style.cursor="";
     }
+
+    // Whenever an event occurs, trigger all registered listeners
 
     OnMouseDown(_event)
     {
@@ -2290,6 +2515,8 @@ export class InputManager extends Component
     }
 }
 
+// Interactable UI Element that handles cursor collision, click interactions, animator state swapping and sound effects
+
 export class UIElement extends CursorBoxCollider
 {
     constructor(gameObject, canvas, animator, textData=new TextData("", "8px VCR_OSD_MONO", "white", "center", "middle", Engine.I.UI_TEXT_DEFAULT_LAYER), width=32, height=32, sfx=[], interactable=true)
@@ -2321,6 +2548,8 @@ export class UIElement extends CursorBoxCollider
 
         this._bound = false;
     }
+
+    // Lifecycle events
 
     Start()
     {
@@ -2485,6 +2714,8 @@ export class UIElement extends CursorBoxCollider
     }
 }
 
+// Component that organises UIElements into a continuous list that can be navigated by both keyboard/mouse and controller
+
 export class UICanvas extends Component
 {
     constructor(gameObject)
@@ -2538,6 +2769,8 @@ export class UICanvas extends Component
 
         this._indexChangeTimer -= Engine.I.deltaTime;
     }
+
+    // Ensure that the current input mode is reflected by the current element selection
 
     Internal_CheckInputMode()
     {
@@ -2595,6 +2828,8 @@ export class UICanvas extends Component
         this._gamepadListening = false;
     }
 
+    // Search for the next interactable UI element in the canvas
+
     Internal_FindNextInteractable(_startElement, _direction)
     {
         if (this._elements.length == 0) { return null; }
@@ -2623,6 +2858,8 @@ export class UICanvas extends Component
 
         return null;
     }
+
+    // Search for the next interactable UI element in the canvas through a given direction that returns the nearest candidate
 
     Internal_FindNextByDirection(_directionX, _directionY)
     {
@@ -2658,6 +2895,8 @@ export class UICanvas extends Component
 
         return _closest;
     }
+
+    // Change from current element to the next by using a direction
 
     Internal_MoveSelection(_directionX, _directionY)
     {
@@ -2826,6 +3065,9 @@ export class UICanvas extends Component
     }
 }
 
+
+// Component that allows inheriting classes to trigger events after a specified period of time passes
+
 export class Timer extends Component
 {
     constructor(gameObject, startValue, autoPlay=false, destructive=true)
@@ -2839,6 +3081,8 @@ export class Timer extends Component
 
         this._destructive = destructive;
     }
+
+    // Decrease timer value by deltaTime to allow for framerate independence
 
     Update()
     {
@@ -2900,6 +3144,8 @@ export class Timer extends Component
     }
 }
 
+// Core class for storing and updating a hierarchy of GameObjects
+
 export class Scene
 {
     constructor(name="Scene")
@@ -2908,6 +3154,8 @@ export class Scene
 
         this.root = new GameObject(this, "Scene Root", null);
 
+        // Each scene should have its own collider manager to handle collisions with
+
         this.colliderManager = this.root.AddComponent(ColliderManager);
 
         this._initialised = false;
@@ -2915,6 +3163,8 @@ export class Scene
 
     Base_Start()
     {
+        // The persistent scene is not destroyed between scene transitions and stores utilities such as the input manager
+
         if (this == Engine.I.persistentScene)
         {
             this.cursorManager = this.root.AddComponent(CursorManager);
@@ -2925,6 +3175,8 @@ export class Scene
     }
 
     Base_Update() { this.Update(); }
+
+    // Iterate through each GameObject in the scene and update them
 
     Internal_TraverseAndUpdate(_target=this.root.transform)
     {
@@ -2958,14 +3210,20 @@ export class Scene
     Update() {  }
 }
 
+// The Core class for all essential operations such as updating logic and rendering
+
 export class Engine
 {
     constructor(width=512, height=512, scale=Vector2.one, imageSmoothing=false, borderStyle="1px solid #000000")
     {
+        // This class uses the singleton pattern, meaning that only one instance should be present at any given time
+
         if (Engine.I)
         {
             throw new Error("Multiple Rebound instances detected! There can only be one.");
         }
+
+        // If no other instances are found, this becomes the primary instance
 
         else
         {
@@ -3032,6 +3290,8 @@ export class Engine
         this._renderQueue = [];
         this._scenes = [];
 
+        // preventDefault removes the risk of accidentally clicking into a menu while trying to play the game
+
         document.addEventListener("keydown", (_event) => 
             {
                 if (_event.code == "Tab" || _event.code == "AltLeft" || _event.code == "MetaLeft" || _event.code == "ControlLeft")
@@ -3053,6 +3313,8 @@ export class Engine
 
         window.onEachFrame(this.Internal_Update.bind(this));
     }
+
+    // Statically accessible instance of the engine class
 
     static I;
 
@@ -3081,6 +3343,8 @@ export class Engine
         window.onEachFrame = _frame;
     }
 
+    // Update every currently loaded scene, then render
+
     Internal_Update()
     {
         for (let i = 0; i < this._scenes.length; i++)
@@ -3091,13 +3355,23 @@ export class Engine
         this.Internal_Render();
     }
 
+    // Allow every instance of a renderer to draw to the screen in their layer order
+
     Internal_Render()
     {
+        // Set ctx transformation matrix to default value
+
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // Clear previous frame on screen
 
         this.ctx.clearRect(0, 0, this.c.width, this.c.height);
 
+        // Scale canvas to match desired size
+
         this.ctx.scale(this.scale.x, this.scale.y);
+
+        // Organise render queue by sprite layer and index precedence
 
         this._renderQueue.sort(
         (_a, _b) => 
@@ -3114,6 +3388,8 @@ export class Engine
         }
         );
 
+        // Iterate through the entire render queue
+
         for (let i = 0; i < this._renderQueue.length; i++)
         {
             if (this._renderQueue[i] instanceof TilemapRenderer)
@@ -3121,6 +3397,8 @@ export class Engine
                 const _renderer = this._renderQueue[i];
 
                 if (!_renderer.sprite.texture.complete || !_renderer.tiles) { continue; }
+
+                // Save 2D context state, then apply renderer specific transformation
 
                 this.ctx.save();
 
@@ -3137,10 +3415,19 @@ export class Engine
 
                 for (let _data of _renderer.data)
                 {
+                    // Divide JSON data by "x" separator 
+
                     const _current = _data.split("x");
 
+                    // Commands include: -2 (Blank space), -1 (Line break), 0+ (Draw tile)
+
                     const _command = parseInt(_current[0]);
+
+                    // Number of times the command should be performed
+
                     const _iterations = parseInt(_current[1]);
+
+                    // When triggering a line break, add to row and reset current column to 0
 
                     if (_command == -1)
                     {
@@ -3167,6 +3454,8 @@ export class Engine
                     const _command = parseInt(_current[0]);
                     const _iterations = parseInt(_current[1]);
 
+                    // Move down by the number of iterations and reset the x position
+
                     if (_command == -1)
                     {
                         _currentPos.y += _iterations;
@@ -3175,12 +3464,16 @@ export class Engine
                         continue;
                     }
 
+                    // Move along the x axis by the number of iterations
+
                     if (_command == -2)
                     {
                         _currentPos.x += _iterations;
 
                         continue;
                     }
+
+                    // When a tile command is encountered, draw the tile as a sprite at the appropriate coordinates
 
                     for (let i = 0; i < _iterations; i++)
                     {
@@ -3277,6 +3570,8 @@ export class Engine
         return this._deltaTime;
     }
 
+    // Move a GameObject from once scene to another. Useful for adding objects to the persistent scene
+
     MoveToScene(_gameObject, _scene)
     {
         const RecursiveUpdateScene = (_target) =>
@@ -3329,6 +3624,8 @@ export class Engine
         this._scenes.push(_scene);
     }
 
+    // Unload all currently active scenes, then load the provided scene
+
     LoadScene(_scene)
     {
         for (let i = 0; i < this._scenes.length; i++)
@@ -3342,6 +3639,8 @@ export class Engine
         this.currentScene = _scene;
         this.AddToScenes(_scene);
     }
+
+    // Remove the provided scene from the active scene list
 
     UnloadScene(_scene)
     {

@@ -12,6 +12,8 @@ import
     SplashScreen
 } from "/source/tireless/scenes/splashScreen.js";
 
+// Stores important save data such as the player's score and if the game has been completed
+
 export class TransferProperties extends Component
 {
     constructor(gameObject, position, health, keys=[false, false])
@@ -30,6 +32,8 @@ export class TransferProperties extends Component
         this.gameComplete = false;
     }
 }
+
+// Stores the state of the associated level
 
 export class LevelTransferProperties extends TransferProperties
 {
@@ -80,6 +84,8 @@ const _playButton = document.getElementById("playButton");
 const _baseWidth = 256;
 const _baseHeight = 256;
 
+// Create an engine instance and run the splash screen
+
 _playButton.onclick = () =>
 {
     const _startScene = new SplashScreen();
@@ -105,6 +111,8 @@ _saveButton.onclick = () =>
 {
     if (Engine.I == undefined) { return; }
 
+    // Check which levels have any saved states to store
+
     const _tp = Engine.I.persistentScene.transferProperties;
 
     if (_tp == undefined) { return; }
@@ -121,6 +129,8 @@ _saveButton.onclick = () =>
 
     const _dtp = Engine.I.persistentScene.dojoLevelTransferProperties;
 
+    // Assemble state data into serialisable format
+    
     const _data = 
     {
         transferProperties: 
@@ -206,6 +216,8 @@ _saveButton.onclick = () =>
         }
     }
 
+    // Generate download link for JSON data
+    
     const _blob = new Blob([JSON.stringify(_data)], { type: "application/json" });
     const _url = URL.createObjectURL(_blob);
 
@@ -226,6 +238,8 @@ _loadButton.onclick = () =>
 {
     const _input = document.getElementById("loadInput");
 
+    // Once the user has selected a JSON save file, modify the PersistentScene to use the stored data
+
     _input.onchange = () => 
     {
         if (_input.files.length <= 0) { return; }
@@ -236,12 +250,16 @@ _loadButton.onclick = () =>
         {
             const _data = JSON.parse(_event.target.result);
 
+            // Load primary transfer properties
+
             Engine.I.persistentScene.transferProperties = new GameObject(Engine.I.persistentScene, "TransferProperties").AddComponent(TransferProperties, new Vector2(72, 128), _data.transferProperties.health, _data.transferProperties.keys);
 
             Engine.I.persistentScene.transferProperties.score = _data.transferProperties.score;
             Engine.I.persistentScene.transferProperties.playerHasGun = _data.transferProperties.playerHasGun;
             Engine.I.persistentScene.transferProperties.gameComplete = _data.transferProperties.gameComplete;
 
+            // For each level, load the save state if it is available
+            
             if (_data.alleywayLevelTransferProperties != undefined)
             {
                 Engine.I.persistentScene.alleywayLevelTransferProperties = new GameObject(Engine.I.persistentScene, "AlleywayLevelTransferProperties").AddComponent(LevelTransferProperties);

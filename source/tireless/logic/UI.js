@@ -41,6 +41,8 @@ import
     LevelTransferProperties
 } from "/source/tireless/tireless.js";
 
+// Visual indicator for how long the player has left with their block ability
+
 export class BlockUI extends GameObject
 {
     constructor(scene, name="BlockUI", parent=null)
@@ -81,6 +83,8 @@ export class BlockUI extends GameObject
     }
 }
 
+// Visual indicator for the current status of the player's dash ability
+
 export class DashUI extends GameObject
 {
     constructor(scene, name="DashUI", parent=null)
@@ -111,6 +115,8 @@ export class DashUI extends GameObject
         }
     }
 }
+
+// Ensures that the player's health is always correctly reflected by the HealthUI object
 
 export class HealthUIUpdater extends Component
 {
@@ -224,6 +230,8 @@ export class BossEnemyHealthUI extends GameObject
 
     }
 }
+
+// Ensures that the player's score is always reflected by the PlayerScoreUI object
 
 export class PlayerScoreUIUpdater extends Component
 {
@@ -394,6 +402,8 @@ export class WinScreenRestartButton extends GameObject
     SwapScene()
     {
         if (this.clicked) { return; }
+
+        // Reset the game, unlock the secret 3 boss mode
 
         Engine.I.persistentScene.transferProperties = new GameObject(Engine.I.persistentScene, "TransferProperties").AddComponent(TransferProperties, new Vector2(72, 128), 100);
 
